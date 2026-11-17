@@ -24,7 +24,7 @@ let glPipeline = null;
 const audioEngine = new ProceduralAudio();
 
 // Default preview at t=24.8s (Era 02 Handheld IR Night-Vision Camcorder in full action -> morphs at 28s into Classical Impasto Oil Painting -> crosses into Era 03 at 34s with ZERO God-Ray bleed!)
-let currentTime = 72.5; // Default at start of Part 2 (Era 06 Northern Song Bianjing & Su Song Clock Tower!)
+let currentTime = 131.5; // Default preview at Act III V6.0 (Era 11 82-Xiyou Tesla Vertical Ascent -> Era 12 16-Sculpture Crisp 3DGS -> Era 13-15 Masterpieces!) // Default at start of Part 2 (Era 06 Northern Song Bianjing & Su Song Clock Tower!)
 let isPlaying = false;
 let isGalleryMode = false;
 let showVFXCallouts = true;

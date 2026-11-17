@@ -1977,6 +1977,44 @@ function renderEraSlice(pg, eraObj, state, rig, xMin, xMax) {
   }
 
   drawContinuousPhysicalRoad(pg, eraObj, state, xMin, xMax, H);
+
+  // V6.0 6-DOF COSMIC RIDING PHYSICAL TRACK UNDER WHEELS (Ensures 0% floating when climbing lightning/spacetime/orbital ramps!)
+  if (cam && (Math.abs(cam.rideAltitudeOffset || 0) > 2 || Math.abs(cam.ridePitch || 0) > 0.02)) {
+    pg.push();
+    const rx1 = rig.rearWheel.x - 180;
+    const ry1 = rig.rearWheel.y + rig.wheelR - Math.tan(cam.ridePitch || 0) * 180;
+    const rx2 = rig.frontWheel.x + 220;
+    const ry2 = rig.frontWheel.y + rig.wheelR + Math.tan(cam.ridePitch || 0) * 220;
+    if (eraObj.id === 'era11') {
+      // Million-Volt AC Lightning Arc & 1982 Xiyou Somersault Cloud Highway directly under wheels!
+      pg.noFill();
+      pg.stroke(255, 224, 78, 225);
+      pg.strokeWeight(8.0);
+      pg.line(rx1, ry1, rx2, ry2);
+      pg.stroke(138, 252, 255, 248);
+      pg.strokeWeight(3.5);
+      pg.beginShape();
+      for (let i = 0; i <= 16; i++) {
+        const u = i / 16;
+        const lx = rx1 + (rx2 - rx1) * u;
+        const ly = ry1 + (ry2 - ry1) * u + Math.sin(u * 25 - t * 32) * 7;
+        pg.vertex(lx, ly);
+      }
+      pg.endShape();
+    } else if (eraObj.id === 'era12' || eraObj.id === 'era15') {
+      pg.noFill();
+      pg.stroke(118, 248, 255, 210);
+      pg.strokeWeight(5.0);
+      pg.line(rx1, ry1, rx2, ry2);
+    } else if (eraObj.id === 'era13') {
+      // Hurdle jump kinetic trajectory ribbon
+      pg.noFill();
+      pg.stroke(255, 232, 68, 215);
+      pg.strokeWeight(4.5);
+      pg.line(rx1, ry1, rx2, ry2);
+    }
+    pg.pop();
+  }
   renderDynamicWeather(pg, eraObj, state, xMin, xMax, W, H);
   renderMuseumRigForEra(pg, rig, state, eraObj);
   renderForegroundRackFocusProps(pg, eraObj, state, xMin, xMax, W, H);
