@@ -49,3 +49,5 @@ pelican-6000-years/
     ├── shaders/                # WebGL2 实时后期光学着色器
     ├── gl/pipeline.js          # WebGL2 渲染管线封装
     └── audio/                  # 20 支时代合成器乐队与环境拟音（Foley）引擎
+
+    多 AI 协同打磨：请先阅读 SPEC.md 与 AI_COLLABORATION_GUIDE.md
