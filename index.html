@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《鹈鹕测试 V4 · 第一、二大部分全集 (00–10幕 · 130s)》· 宋元明清 × 大航海盗梦折叠 × 梵高星月夜科学 × 麦克斯韦电磁场</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d12;
+      --panel: #141821;
+      --border: #283042;
+      --text: #f0f4fc;
+      --muted: #94a0b8;
+      --accent: #e0b468;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      gap: 10px;
+    }
+    .stage-wrap {
+      position: relative;
+      width: min(100%, 1060px);
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.68);
+    }
+    #gl-canvas { width: 100%; height: 100%; display: block; cursor: pointer; }
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 10, 15, 0.36);
+      backdrop-filter: blur(2px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .start-badge {
+      background: linear-gradient(135deg, #f0c980, #c88a36);
+      color: #171005;
+      padding: 12px 26px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 15px;
+      box-shadow: 0 10px 30px rgba(224, 180, 104, 0.45);
+    }
+    .start-sub {
+      color: #e2e8f0;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.78);
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(224, 180, 104, 0.35);
+    }
+    .gallery-wrap {
+      display: none;
+      width: min(100%, 1060px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 12px;
+    }
+    .gallery-card {
+      background: #0e121a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .gallery-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .gallery-card img { width: 100%; aspect-ratio: 16 / 9; display: block; object-fit: cover; }
+    .gallery-meta { padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+    .gallery-tag { color: var(--accent); font-family: ui-monospace, monospace; font-size: 11px; }
+    .controls {
+      width: min(100%, 1060px);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .hud-bar {
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      color: #f6e7c8;
+      background: #0e121a;
+      border: 1px solid rgba(224, 180, 104, 0.3);
+      border-radius: 6px;
+      padding: 6px 12px;
+    }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    button {
+      background: var(--accent);
+      color: #171106;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 13px;
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #1d2331;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.pill {
+      background: #181d29;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    button.pill.active {
+      background: rgba(224, 180, 104, 0.18);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--accent); }
+    .time-label { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); min-width: 92px; text-align: right; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
+</head>
+<body>
+  <div class="stage-wrap" id="stage-wrap">
+    <canvas id="gl-canvas" width="1280" height="720"></canvas>
+    <div class="start-overlay" id="start-overlay">
+      <div class="start-badge">▶ 点击播放【V4·第二大部分（06–10幕：宋元明清·大航海·梵高科学·麦克斯韦电磁）】</div>
+      <div class="start-sub">已根治 t=80.9s 音频崩溃！当前停在 t=72.5s【06 北宋】，可顺畅连播至 190s（含 07 巨毫洒墨成虾鸟、12 幕 3D 高斯点云“时间千足虫”及 11–15 幕）</div>
+    </div>
+  </div>
+  <div class="gallery-wrap" id="gallery-wrap">
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+  <div class="controls">
+    <div class="hud-bar" id="hud">Loading Act I V6 Dimensional Art-Medium &amp; Zero-Collision Layout Engine...</div>
+    <div class="row">
+      <button id="play-btn">播放 Play</button>
+      <button id="seam-demo-btn" class="secondary">看下一个跨幕过渡 Next Seam</button>
+      <button id="vfx-toggle-btn" class="secondary">✨ 特效导览: ON</button>
+      <button id="mute-btn" class="secondary">声音 On</button>
+      <button id="view-toggle-btn" class="secondary">分镜检视 Gallery</button>
+      <input id="scrubber" type="range" min="0" max="190" step="0.0166667" value="72.5" />
+      <span class="time-label" id="time-label">72.5 / 190.0s</span>
+    </div>
+    <div class="row" id="era-pills"></div>
+  </div>
+  <script src="./src/beat/clock.js"></script>
+  <script src="./src/kit/brushEngine.js"></script>
+  <script src="./src/rig/pelicanCatIK.js"></script>
+  <script src="./src/scenes/act1MuseumMagic.js"></script>
+  <script src="./src/shaders/act1Shaders.js"></script>
+  <script src="./src/gl/pipeline.js"></script>
+  <script src="./src/audio/genreBandEngine.js"></script>
+  <script src="./src/main.js"></script>
+</body>
+</html>
