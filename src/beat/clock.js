@@ -736,7 +736,7 @@ function computeCinemaCamera(era, localT, localProgress, t, beatPulse) {
     oilImpastoAmount = Math.max(0, Math.min(1, (localProgress - 0.46) * 6.0));
   }
 
-  // Era 04 Black-and-White Manga Ink Intensity (1.0 in first half 0.08..0.46, transitions to Full Polychrome Red-Figure in second half!)
+  // Era 04 Black-and-White Manga Ink Intensity
   let mangaInkAmount = 0.0;
   if (era.id === 'era04') {
     if (localProgress > 0.05 && localProgress < 0.50) {
@@ -752,52 +752,143 @@ function computeCinemaCamera(era, localT, localProgress, t, beatPulse) {
     inceptionFoldAmount = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.06) / 0.88)) * Math.PI);
   }
 
-  // Act II Dolly Zooms & Dimensional Art-Medium Envelopes (era06..era10)
+  // =========================================================================
+  // V6.0 6-DOF COSMIC RIDING & MULTI-ANGLE CINEMA CAMERA ("天地为方、前后左右为合")
+  // =========================================================================
+  let ridePitch = 0.0;             // Vertical climb (<0) or dive (>0) pitch in radians
+  let rideAltitudeOffset = 0.0;    // Vertical elevation offset in pixels (<0 = high in sky)
+  let frontWheelScale = 1.0;       // Z-axis foreshortening for head-on / receding riding
+  let rearWheelScale = 1.0;
+  let wheelbaseCompress = 1.0;     // <1.0 when riding head-on toward camera (Z-axis)
+  let squashStretchX = 1.0;        // Cartoon sprint stretch X
+  let squashStretchY = 1.0;        // Cartoon sprint squash Y
+  let cameraAngleTag = 'EYE-LEVEL PANORAMA · 平视宽银幕长卷';
+
   if (era.id === 'era06') {
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.06 + u * 0.18;
+    cameraAngleTag = 'SONG SCROLL DOLLY · 清明上河微距平移';
   } else if (era.id === 'era07') {
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.10 + u * 0.28;
+    // Slight wave climb over Zheng He's porcelain waves
+    ridePitch = Math.sin(localProgress * Math.PI * 2) * -0.10;
+    cameraAngleTag = 'SPLASH-INK AERIAL SWEEP · 巨毫泼墨俯仰运镜';
   } else if (era.id === 'era08') {
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.12) / 0.76)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.08 + u * 0.22;
+    ridePitch = Math.sin(t * 2.8) * -0.12;
+    cameraAngleTag = 'INCEPTION SEA-SKY ROLL · 大航海180°海天折叠运镜';
   } else if (era.id === 'era09') {
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.15) / 0.75)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.06 + u * 0.20;
+    cameraAngleTag = 'IMPASTO FLOW-FIELD PAN · 梵高星月夜厚涂流场运镜';
   } else if (era.id === 'era10') {
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.08 + u * 0.24;
+    cameraAngleTag = 'MAXWELL FLUX ORBIT · 跨洋磁感线穿行运镜';
   } else if (era.id === 'era11') {
-    const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
+    // ACT 11: VERTICAL UPWARD CLIMB ("天地垂直向：顺百万伏特闪电从瀑布深渊直冲82版《西游记》凌霄雷云苍穹 + 地面极限仰视")
+    const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.06) / 0.88)) * Math.PI);
     dollyActive = u;
-    bgDollyScale = 1.10 + u * 0.28;
-    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.12 + beatPulse * 0.03;
+    bgDollyScale = 1.12 + u * 0.30;
+    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.14 + beatPulse * 0.03;
+    const climbEnv = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.08) / 0.84)) * Math.PI);
+    ridePitch = -0.38 * climbEnv; // Steep upward sky-climb pitch!
+    rideAltitudeOffset = -118 * climbEnv + Math.sin(t * 9.0) * 6.0;
+    cameraAngleTag = localProgress < 0.50
+      ? 'LOW-ANGLE VERTICAL SKY-ASCENT · 地面极限仰视·顺闪电垂直登天'
+      : '82-XIYOU HAVOC-IN-HEAVEN LASER CAM · 82版《西游记》凌霄仙雾仰冲镜头';
   } else if (era.id === 'era12') {
-    // Einstein 4D Spacetime & 3D Gaussian Centipede Panoramic Pull-Back & Zoom!
+    // ACT 12: 90° OVERHEAD GAUSSIAN TIMELINE -> LOW-ANGLE BLACK HOLE GRAVITATIONAL LENS + HAMLET STAGE SPOTLIGHT
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.08) / 0.84)) * Math.PI);
     dollyActive = u;
     bgDollyScale = 1.12 + u * 0.30;
     camZoom = 1.0 + Math.sin(localProgress * Math.PI * 2) * 0.09;
+    if (localProgress < 0.48) {
+      // 90° Top-Down Overhead God's-Eye View descending along the S-curve
+      const ov = Math.sin((localProgress / 0.48) * Math.PI);
+      ridePitch = 0.22 * ov;
+      rideAltitudeOffset = -54 * ov;
+      cameraAngleTag = '90° OVERHEAD 3DGS TIMELINE · 90°上帝俯瞰16尊3D高斯点云定格雕塑';
+    } else {
+      // Wheel-Level Low-Angle Upward View into Black Hole Gravitational Lens & Hamlet Spotlight
+      const lw = Math.sin(((localProgress - 0.48) / 0.52) * Math.PI);
+      ridePitch = -0.24 * lw;
+      rideAltitudeOffset = -32 * lw;
+      frontWheelScale = 1.0 + 0.16 * lw;
+      rearWheelScale = 1.0 - 0.10 * lw;
+      cameraAngleTag = 'WHEEL-LEVEL BLACK-HOLE LENS · 车轮极限仰视黑洞透镜×《哈姆雷特》追光';
+    }
   } else if (era.id === 'era13') {
-    const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.12) / 0.78)) * Math.PI);
-    dollyActive = u;
-    bgDollyScale = 1.08 + u * 0.24;
-    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.14;
-  } else if (era.id === 'era14') {
+    // ACT 13: HEAD-ON SPRINT BREAKING LENS ("从后往前迎面冲刺突破镜头 + 90°俯拍跑道 + 跨栏仰拍慢动作 + 喜羊羊/猪猪侠拉伸变形")
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
     dollyActive = u;
-    bgDollyScale = 1.06 + u * 0.20;
-  } else if (era.id === 'era15') {
+    bgDollyScale = 1.08 + u * 0.24;
+    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.15;
+    if (localProgress < 0.36) {
+      // Mode A: Head-On Z-Axis Sprint toward the lens (Front wheel huge, wheelbase foreshortened!)
+      const ho = Math.sin((localProgress / 0.36) * Math.PI);
+      frontWheelScale = 1.0 + 0.32 * ho;
+      rearWheelScale = 1.0 - 0.22 * ho;
+      wheelbaseCompress = 1.0 - 0.28 * ho;
+      squashStretchX = 1.0 + 0.14 * ho * beatPulse;
+      squashStretchY = 1.0 - 0.10 * ho * beatPulse;
+      cameraAngleTag = 'HEAD-ON Z-AXIS SPRINT · 迎面正视破风冲刺镜头 (前轮透视放大)';
+    } else if (localProgress < 0.68) {
+      // Mode B: 90° Overhead Track View
+      const ov = Math.sin(((localProgress - 0.36) / 0.32) * Math.PI);
+      rideAltitudeOffset = -45 * ov;
+      squashStretchX = 1.08;
+      squashStretchY = 0.94;
+      cameraAngleTag = '90° OVERHEAD OLYMPIC TRACK · 90°垂直俯拍八道塑胶跑道';
+    } else {
+      // Mode C: Hurdle Jump Low-Angle Slow-Mo!
+      const hj = Math.sin(((localProgress - 0.68) / 0.32) * Math.PI);
+      ridePitch = -0.32 * hj;
+      rideAltitudeOffset = -92 * hj;
+      frontWheelScale = 1.18;
+      squashStretchX = 1.12;
+      squashStretchY = 0.90;
+      cameraAngleTag = '1000FPS HURDLE LOW-ANGLE SLOW-MO · 跨栏腾空极限仰拍慢动作';
+    }
+  } else if (era.id === 'era14') {
+    // ACT 14: HEAD-ON RIDING + MACRO ZOOM DIVING INTO GREEN PCB "CYBER GRAND VIEW GARDEN" (《红楼梦》刘姥姥进赛博大观园)
     const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.08) / 0.84)) * Math.PI);
     dollyActive = u;
+    bgDollyScale = 1.08 + u * 0.34;
+    const ho = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.10) / 0.80)) * Math.PI);
+    frontWheelScale = 1.0 + 0.22 * ho;
+    rearWheelScale = 1.0 - 0.16 * ho;
+    wheelbaseCompress = 1.0 - 0.20 * ho;
+    camZoom = 1.0 + ho * 0.16;
+    cameraAngleTag = localProgress < 0.45
+      ? 'HEAD-ON GARAGE EDEN APPLE · 迎面正视骑行·伊甸园智慧苹果树'
+      : 'MACRO DIE-SHOT PCB GARDEN · 微距钻入芯片内部《红楼梦》赛博大观园';
+  } else if (era.id === 'era15') {
+    // ACT 15: 6-DOF ORBITAL DIVE FROM SPACE BESIDE FUXING HIGH-SPEED BULLET TRAIN + THREE-BODY SOPHON & WATERDROP
+    const u = Math.sin(Math.max(0, Math.min(1, (localProgress - 0.06) / 0.88)) * Math.PI);
+    dollyActive = u;
     bgDollyScale = 1.10 + u * 0.28;
-    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.12;
+    camZoom = 1.0 + Math.sin(localProgress * Math.PI) * 0.14;
+    if (localProgress < 0.44) {
+      // Diving down from orbital space (high altitude + downward pitch + receding/approaching perspective)
+      const dv = Math.cos((localProgress / 0.44) * (Math.PI * 0.5));
+      ridePitch = 0.30 * dv;
+      rideAltitudeOffset = -110 * dv;
+      frontWheelScale = 1.0 + 0.18 * dv;
+      cameraAngleTag = '6-DOF ORBITAL SPACE DIVE · 太空轨道六合全向俯冲镜头';
+    } else {
+      // Pacing right alongside the Fuxing High-Speed Bullet Train roof
+      ridePitch = Math.sin(t * 4.0) * 0.04;
+      frontWheelScale = 1.08;
+      cameraAngleTag = 'HIGH-SPEED RAIL ROOF PACING · 贴近复兴号高铁车顶并驾齐驱×《三体》水滴伴飞';
+    }
   }
 
   let swayX = 0;
@@ -809,22 +900,29 @@ function computeCinemaCamera(era, localT, localProgress, t, beatPulse) {
     swayY = Math.cos(t * 3.0) * 1.5 + Math.cos(t * 64.0) * tremor;
     dutchRoll = Math.sin(t * 45.0) * lionGroundTremor * 0.012;
   } else if (era.id === 'era02' && localProgress < 0.52) {
-    // Authentic handheld night-vision camcorder shake & breathing jitter in the storm!
     swayX = Math.sin(t * 4.5) * 6.5 + Math.cos(t * 17.0) * 2.2 * nightVisionAmount;
     swayY = Math.cos(t * 5.8) * 5.8 + Math.sin(t * 21.0) * 2.2 * nightVisionAmount;
     dutchRoll = Math.sin(t * 3.2) * 0.020;
   } else if (era.id === 'era04' && localProgress > 0.22 && localProgress < 0.88) {
     dutchRoll = -0.014;
   } else if (era.id === 'era08') {
-    // Authentic Atlantic ocean swell & Inception dream-folding camera roll!
     swayX = Math.sin(t * 2.2) * 4.5;
     swayY = Math.cos(t * 2.8) * 4.0;
     dutchRoll = Math.sin(t * 1.8) * 0.015;
   } else if (era.id === 'era09') {
-    // Swirling Van Gogh Starry Night painterly breathing camera!
     swayX = Math.sin(t * 2.0) * 3.2;
     swayY = Math.cos(t * 2.5) * 2.8;
     dutchRoll = Math.cos(t * 1.6) * 0.012;
+  } else if (era.id === 'era11') {
+    swayX = Math.sin(t * 3.2) * 3.5;
+    swayY = Math.cos(t * 4.0) * 3.5;
+    dutchRoll = -0.032 * Math.sin(localProgress * Math.PI);
+  } else if (era.id === 'era12') {
+    dutchRoll = Math.sin(localProgress * Math.PI * 2) * 0.024;
+  } else if (era.id === 'era13') {
+    dutchRoll = Math.sin(t * 5.0) * 0.018;
+  } else if (era.id === 'era15') {
+    dutchRoll = Math.cos(localProgress * Math.PI) * 0.022;
   }
 
   const lightningWave = Math.sin(t * 9.5);
@@ -848,6 +946,14 @@ function computeCinemaCamera(era, localT, localProgress, t, beatPulse) {
     oilImpastoAmount,
     mangaInkAmount,
     inceptionFoldAmount,
+    ridePitch,
+    rideAltitudeOffset,
+    frontWheelScale,
+    rearWheelScale,
+    wheelbaseCompress,
+    squashStretchX,
+    squashStretchY,
+    cameraAngleTag,
   };
 }
 
@@ -859,44 +965,83 @@ function getBeatState(rawT, W = 1280) {
   const barPhase = bar - Math.floor(bar);
   const beatPulse = Math.exp(-beatPhase * 5.2);
 
+  let eraIndex = 0;
+  for (let i = 0; i < TIMELINE.length; i++) {
+    if (t >= TIMELINE[i].start && t <= TIMELINE[i].end) {
+      eraIndex = i;
+      break;
+    }
+  }
+  const era = TIMELINE[eraIndex];
+  const localT = t - era.start;
+  const eraDuration = Math.max(0.001, era.end - era.start);
+  const localProgress = Math.max(0, Math.min(1, localT / eraDuration));
+
+  // Compute exact Toast alpha envelope (`HUDToastContract`: 0.4s fade-in -> 1.8s hold -> 0.6s fade-out -> 0.0 invisible!)
+  const numNotes = (era.vfxNotes && era.vfxNotes.length) ? era.vfxNotes.length : 3;
+  const slotDur = eraDuration / numNotes;
+  const activeNoteIdx = Math.min(numNotes - 1, Math.floor(localT / slotDur));
+  const noteElapsed = localT - activeNoteIdx * slotDur;
+  let toastAlpha = 0.0;
+  if (noteElapsed >= 0.0 && noteElapsed < 0.4) {
+    toastAlpha = noteElapsed / 0.4;
+  } else if (noteElapsed >= 0.4 && noteElapsed < 2.2) {
+    toastAlpha = 1.0;
+  } else if (noteElapsed >= 2.2 && noteElapsed < 2.8) {
+    toastAlpha = Math.max(0.0, 1.0 - (noteElapsed - 2.2) / 0.6);
+  } else {
+    toastAlpha = 0.0;
+  }
+
+  const pelicanScreenX = W * 0.45 + Math.sin(t * 0.95) * 14;
   const pelicanWorldX = t * WORLD_SPEED;
-  const pelicanScreenX = W * 0.40;
   const cameraLeftWorldX = pelicanWorldX - pelicanScreenX;
   const cameraRightWorldX = cameraLeftWorldX + W;
 
-  const { index: eraIndex, era } = getEraAtWorldX(pelicanWorldX);
-  const localT = t - era.start;
-  const dur = Math.max(0.0001, era.end - era.start);
-  const localProgress = Math.max(0, Math.min(1, localT / dur));
+  const leftLookup = getEraAtWorldX(Math.max(0, cameraLeftWorldX));
+  const rightLookup = getEraAtWorldX(Math.max(0, cameraRightWorldX));
 
-  const MORPH_HALF_W = 240;
   let seamScreenX = -9999;
   let seamWorldX = -9999;
-  let leftEra = era;
-  let rightEra = era;
-  let morphFactor = 0.0;
-
-  for (let i = 0; i < TIMELINE.length - 1; i++) {
-    const swx = TIMELINE[i].worldEndX;
-    if (swx >= cameraLeftWorldX - 260 && swx <= cameraRightWorldX + 260) {
-      seamWorldX = swx;
-      seamScreenX = swx - cameraLeftWorldX;
-      leftEra = TIMELINE[i];
-      rightEra = TIMELINE[i + 1];
-      const dist = pelicanWorldX - swx;
-      morphFactor = Math.max(0, Math.min(1, (dist + MORPH_HALF_W) / (MORPH_HALF_W * 2)));
-      break;
+  if (leftLookup.index !== rightLookup.index) {
+    seamWorldX = rightLookup.era.worldStartX;
+    seamScreenX = seamWorldX - cameraLeftWorldX;
+  } else {
+    const nextEra = TIMELINE[eraIndex + 1];
+    const prevEra = TIMELINE[eraIndex];
+    if (nextEra && Math.abs(nextEra.worldStartX - pelicanWorldX) < W) {
+      seamWorldX = nextEra.worldStartX;
+      seamScreenX = seamWorldX - cameraLeftWorldX;
+    } else if (prevEra && prevEra.worldStartX > 0 && Math.abs(prevEra.worldStartX - pelicanWorldX) < W) {
+      seamWorldX = prevEra.worldStartX;
+      seamScreenX = seamWorldX - cameraLeftWorldX;
     }
   }
 
   const cam = computeCinemaCamera(era, localT, localProgress, t, beatPulse);
 
   return {
-    t, beat, bar, beatPhase, barPhase, beatPulse,
-    eraIndex, era, localT, localProgress,
-    pelicanWorldX, pelicanScreenX,
-    cameraLeftWorldX, cameraRightWorldX,
-    seamScreenX, seamWorldX, leftEra, rightEra, morphFactor, MORPH_HALF_W,
+    t,
+    beat,
+    bar,
+    beatPhase,
+    barPhase,
+    beatPulse,
+    eraIndex,
+    era,
+    localT,
+    localProgress,
+    activeNoteIdx,
+    noteElapsed,
+    toastAlpha,
+    pelicanScreenX,
+    pelicanWorldX,
+    cameraLeftWorldX,
+    cameraRightWorldX,
+    leftEra: leftLookup.era,
+    rightEra: rightLookup.era,
+    seamScreenX,
+    seamWorldX,
     cam,
   };
 }

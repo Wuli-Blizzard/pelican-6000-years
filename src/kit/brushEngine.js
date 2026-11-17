@@ -1295,7 +1295,37 @@ const BrushKit = {
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // LAYER A: ANDEAN MACHU PICCHU MEGALITHIC TERRACES & STEPPED SUN PYRAMID
+    // Helper: Multi-Segment Vertex Sine-Wave + Perlin Gust Cloth/Flag Physics ("多段顶点正弦波 + 柏林噪声阵风模拟")
+    const drawWindWavingBanner = (rootX, rootY, length, baseH, tipH, colTop, colMid, colBot, phaseOff = 0) => {
+      const segs = 10;
+      const bands = [colTop, colMid, colBot];
+      for (let b = 0; b < bands.length; b++) {
+        pg.fill(...bands[b]);
+        pg.noStroke();
+        pg.beginShape();
+        for (let i = 0; i <= segs; i++) {
+          const u = i / segs;
+          const x = rootX + u * length;
+          const hHere = baseH * (1 - u) + tipH * u;
+          const gust = Math.sin(u * 4.8 - t * 9.5 + phaseOff) * (8.5 * u)
+                     + (noise1D(u * 3.2 + t * 2.8 + phaseOff) - 0.5) * (11.0 * u);
+          const yTop = rootY + gust + (b / bands.length) * hHere;
+          pg.vertex(x, yTop);
+        }
+        for (let i = segs; i >= 0; i--) {
+          const u = i / segs;
+          const x = rootX + u * length;
+          const hHere = baseH * (1 - u) + tipH * u;
+          const gust = Math.sin(u * 4.8 - t * 9.5 + phaseOff) * (8.5 * u)
+                     + (noise1D(u * 3.2 + t * 2.8 + phaseOff) - 0.5) * (11.0 * u);
+          const yBot = rootY + gust + ((b + 1) / bands.length) * hHere;
+          pg.vertex(x, yBot);
+        }
+        pg.endShape(pg.CLOSE);
+      }
+    };
+
+    // LAYER A: ANDEAN MACHU PICCHU MEGALITHIC TERRACES, STEPPED SUN PYRAMID & WHIPPING INCA RAINBOW BANNERS
     pg.push();
     pg.translate(-225, 0);
     pg.fill(58, 104, 68);
@@ -1322,6 +1352,13 @@ const BrushKit = {
       pg.strokeWeight(2.0);
       pg.rect(85 - w * 0.5, y - 22, w, 22, 2);
     }
+    // Inca Wiphala / Rainbow Sun Temple Flags whipping in the Andean wind!
+    [-18, 155].forEach((fx, fIdx) => {
+      pg.stroke(218, 178, 72);
+      pg.strokeWeight(2.6);
+      pg.line(fx, -110, fx, -178);
+      drawWindWavingBanner(fx, -176, 48, 20, 12, [238, 48, 42], [255, 214, 48], [32, 188, 138], fIdx * 1.7);
+    });
     pg.push();
     pg.translate(85, -172);
     pg.rotate(t * 0.65);
@@ -1356,7 +1393,7 @@ const BrushKit = {
       pg.endShape(pg.CLOSE);
     }
 
-    // SURPRISE EASTER EGG: Golden Inca-Totem Humpback Whale Breaching Between the Lower Sea and the Inverted Sky Ocean!
+    // Breaching Golden Inca-Totem Humpback Whale
     const whalePhase = (t * 0.45) % 1.0;
     const wx = -35 + Math.cos(whalePhase * Math.PI) * 65;
     const wy = -65 - Math.sin(whalePhase * Math.PI) * 95;
@@ -1378,7 +1415,7 @@ const BrushKit = {
       { x: 65,  y: -38, sc: 1.08, phase: 0.0 },
       { x: 285, y: -52, sc: 0.78, phase: 2.1 },
     ];
-    ships.forEach((sh) => {
+    ships.forEach((sh, sIdx) => {
       const pitch = Math.sin(t * 2.8 + sh.phase) * 0.06;
       const heave = Math.cos(t * 2.8 + sh.phase) * 7;
       pg.push();
@@ -1421,27 +1458,38 @@ const BrushKit = {
         pg.line(m.mx, -32 - m.mh, m.mx - 28, -32);
         pg.line(m.mx, -32 - m.mh, m.mx + 28, -32);
 
+        // Multi-Segment Sine-Wave + Perlin Gust Billowing Main Sail!
+        const topY = -48 - m.sh;
+        const botY = -48;
+        const sailSegs = 8;
         pg.fill(252, 246, 232);
         pg.stroke(168, 132, 78);
         pg.strokeWeight(2.0);
         pg.beginShape();
-        pg.vertex(m.mx - m.sw * 0.5, -48 - m.sh);
-        pg.vertex(m.mx + m.sw * 0.5, -48 - m.sh);
-        pg.quadraticVertex(m.mx + m.sw * 0.68, -48 - m.sh * 0.5, m.mx + m.sw * 0.5, -48);
-        pg.vertex(m.mx - m.sw * 0.5, -48);
-        pg.quadraticVertex(m.mx - m.sw * 0.32, -48 - m.sh * 0.5, m.mx - m.sw * 0.5, -48 - m.sh);
+        for (let i = 0; i <= sailSegs; i++) {
+          const v = i / sailSegs;
+          const sy = topY + v * m.sh;
+          const billow = Math.sin(v * Math.PI) * (m.sw * 0.22 + Math.sin(t * 7.5 + mIdx + v * 3) * 5.5);
+          pg.vertex(m.mx - m.sw * 0.5 + billow * 0.45, sy);
+        }
+        for (let i = sailSegs; i >= 0; i--) {
+          const v = i / sailSegs;
+          const sy = topY + v * m.sh;
+          const billow = Math.sin(v * Math.PI) * (m.sw * 0.28 + Math.sin(t * 7.5 + mIdx + v * 3) * 6.5);
+          pg.vertex(m.mx + m.sw * 0.5 + billow, sy);
+        }
         pg.endShape(pg.CLOSE);
 
-        const cxSail = m.mx + m.sw * 0.08;
+        const midBillow = m.sw * 0.16 + Math.sin(t * 7.5 + mIdx + 1.5) * 4.5;
+        const cxSail = m.mx + midBillow;
         const cySail = -48 - m.sh * 0.5;
         pg.stroke(212, 38, 32);
         pg.strokeWeight(mIdx === 1 ? 5.2 : 3.8);
         pg.line(cxSail, cySail - m.sh * 0.26, cxSail, cySail + m.sh * 0.26);
         pg.line(cxSail - m.sw * 0.24, cySail, cxSail + m.sw * 0.24, cySail);
 
-        pg.fill(218, 42, 34);
-        pg.noStroke();
-        pg.triangle(m.mx, -32 - m.mh, m.mx + 28, -28 - m.mh + Math.sin(t * 8 + mIdx) * 5, m.mx, -22 - m.mh);
+        // Multi-Segment Sine-Wave + Perlin Gust Masthead Pennant Flag ("猎猎翻卷桅杆长三角旗")!
+        drawWindWavingBanner(m.mx, -32 - m.mh, 44 + (mIdx === 1 ? 14 : 0), 13, 2, [228, 38, 32], [255, 214, 58], [228, 38, 32], sIdx * 2.0 + mIdx * 1.3);
       });
       pg.pop();
     });
@@ -1462,40 +1510,58 @@ const BrushKit = {
   },
 
   /**
-   * ERA 09 MASTERPIECE V4.3: SEAMLESS "MECHANICAL & PAINTERLY" FUSION — VAN GOGH "STARRY NIGHT" CLOCKWORK ORRERY & IMPASTO VIADUCT
-   * (机械即油画，油画即机械：天体发条星象仪大齿轮直接由厚涂油画笔触构成，并与下方油画质感蒸汽火车连杆啮合传动，搅动出星月夜漩涡与科学进化图谱！)
+   * ERA 09 MASTERPIECE V6.0: HIGH-DENSITY VAN GOGH "STARRY NIGHT" IMPASTO FLOW-FIELD,
+   * LEFT TWISTED BLACK-FLAME CYPRESS, RIGHT SAINT-RÉMY SPIRE CHURCH & PAINTERLY CLOCKWORK ORRERY
    */
   drawVictorianSteamBridgeAndVanGoghSky(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // =========================================================================
-    // LAYER A: PAINTERLY CLOCKWORK ORRERY & VAN GOGH "STARRY NIGHT" IMPASTO VORTEX!
-    // ("巨型油画发条星象仪：黄铜镂空大齿轮的齿牙直接化作梵高《星月夜》的柠檬黄与钴蓝厚涂漩涡！")
-    // =========================================================================
-    pg.push();
-    pg.translate(0, -235);
-
-    const vortices = [
-      { vx: -95, vy: -12, maxR: 112, dir: 1 },
-      { vx: 115, vy: -24, maxR: 98,  dir: -1 },
-    ];
     const vgPalette = [
       [255, 224, 68],  // Chrome Yellow
       [255, 246, 158], // Zinc White-Yellow
       [78, 156, 248],  // Cobalt Blue
-      [42, 98, 208],   // Ultramarine Blue
+      [38, 88, 198],   // Ultramarine Blue
+      [18, 48, 122],   // Prussian Blue
       [112, 218, 196], // Emerald Impasto
     ];
 
-    // 1) Interlocking Brass Clockwork Orrery Rings embedded INSIDE the two Van Gogh Vortices!
-    vortices.forEach((v, vIdx) => {
+    // =========================================================================
+    // LAYER A: HIGH-DENSITY VAN GOGH IMPASTO FLOW-FIELD SKY & ROLLING ALPILLE HILLS!
+    // =========================================================================
+    pg.push();
+    pg.translate(0, -235);
+
+    // Dense S-Curve Flow-Field Palette-Knife Impasto Streams spanning the entire sky!
+    pg.noFill();
+    for (let stream = 0; stream < 9; stream++) {
+      const baseYStream = -105 + stream * 26;
+      for (let sx = -390; sx <= 390; sx += 22) {
+        const flowWave = Math.sin(sx * 0.015 + stream * 0.55 + t * 1.4) * 28
+                       + Math.cos(sx * 0.028 - stream * 0.4) * 14;
+        const slope = Math.cos(sx * 0.015 + stream * 0.55 + t * 1.4) * 0.42;
+        const col = vgPalette[(Math.abs(Math.floor(sx / 22)) + stream) % vgPalette.length];
+        pg.push();
+        pg.translate(sx, baseYStream + flowWave);
+        pg.rotate(slope);
+        pg.stroke(col[0], col[1], col[2], 235);
+        pg.strokeWeight(5.2);
+        pg.line(-10, 0, 10, 0);
+        pg.pop();
+      }
+    }
+
+    const vortices = [
+      { vx: -95, vy: -16, maxR: 116, dir: 1 },
+      { vx: 115, vy: -28, maxR: 102, dir: -1 },
+    ];
+    vortices.forEach((v) => {
       pg.push();
       pg.translate(v.vx, v.vy);
       pg.rotate(t * 0.45 * v.dir);
       pg.noFill();
-      pg.stroke(245, 196, 68, 185);
+      pg.stroke(245, 196, 68, 195);
       pg.strokeWeight(3.0);
       pg.ellipse(0, 0, v.maxR * 1.45, v.maxR * 1.45);
       for (let g = 0; g < 16; g++) {
@@ -1504,35 +1570,24 @@ const BrushKit = {
       }
       pg.pop();
 
-      // Short curved Van Gogh impasto oil brushstrokes swirling out of the gear teeth!
       pg.noFill();
-      for (let ring = 18; ring <= v.maxR; ring += 13) {
-        const numDashes = Math.floor(ring * 0.28);
+      for (let ring = 16; ring <= v.maxR; ring += 11) {
+        const numDashes = Math.floor(ring * 0.32);
         for (let d = 0; d < numDashes; d++) {
           const baseAng = (d / numDashes) * Math.PI * 2 + t * 0.55 * v.dir + ring * 0.025;
           const col = vgPalette[(d + Math.floor(ring)) % vgPalette.length];
-          pg.stroke(col[0], col[1], col[2], 238);
-          pg.strokeWeight(4.5);
-          pg.arc(v.vx, v.vy, ring * 2.1, ring * 1.35, baseAng, baseAng + 0.28);
+          pg.stroke(col[0], col[1], col[2], 242);
+          pg.strokeWeight(4.8);
+          pg.arc(v.vx, v.vy, ring * 2.1, ring * 1.35, baseAng, baseAng + 0.30);
         }
       }
     });
 
-    // Brass Connecting Rod linking Left Vortex Gear to Right Vortex Gear ("横跨星空的黄铜发条连杆")!
     const rodOffX = Math.cos(t * 1.8) * 18;
     const rodOffY = Math.sin(t * 1.8) * 12;
-    BrushKit.draw3DTube(pg, -95 + rodOffX, -12 + rodOffY, 115 - rodOffX, -24 - rodOffY, [188, 132, 48], [255, 224, 98], [28, 36, 64], 3.8);
+    BrushKit.draw3DTube(pg, -95 + rodOffX, -16 + rodOffY, 115 - rodOffX, -28 - rodOffY, [188, 132, 48], [255, 224, 98], [28, 36, 64], 3.8);
 
-    // Flowing S-curve impasto wind currents across the sky
-    pg.noFill();
-    for (let s = -280; s <= 280; s += 26) {
-      const sy = -18 + Math.sin(s * 0.018 + t * 1.6) * 42;
-      pg.stroke(s % 52 === 0 ? [255, 228, 78, 235] : [92, 178, 255, 225]);
-      pg.strokeWeight(4.8);
-      pg.arc(s, sy, 38, 22, -0.4, 0.8);
-    }
-
-    // 2) 5 Blazing Clockwork Star-Gears & Crescent Moon
+    // 5 Blazing Clockwork Star-Gears & Glowing Crescent Moon
     const gearStars = [
       { x: -245, y: -58, r: 26, spd: 1.4, isMoon: false },
       { x: -165, y: -82, r: 20, spd: -1.8, isMoon: false },
@@ -1548,8 +1603,8 @@ const BrushKit = {
         const hr = st.r + h * 9;
         for (let k = 0; k < 8; k++) {
           const ka = (k / 8) * Math.PI * 2 + t * 0.4 * h;
-          pg.stroke(h === 1 ? [255, 242, 128] : [255, 204, 52], 235 - h * 45);
-          pg.strokeWeight(3.6);
+          pg.stroke(h === 1 ? [255, 242, 128] : [255, 204, 52], 240 - h * 40);
+          pg.strokeWeight(4.0);
           pg.arc(0, 0, hr * 2, hr * 2, ka, ka + 0.45);
         }
       }
@@ -1570,12 +1625,12 @@ const BrushKit = {
       pg.pop();
     });
 
-    // 3) Darwin's Tree of Life & Mendeleev 1869 Periodic Table Cards inside the Swirl
+    // Periodic Table Cards inside Swirl
     const elements = [
       { sym: 'H',  num: '1',  x: -185, y: 28 },
-      { sym: 'C',  num: '6',  x: -95,  y: -12 },
-      { sym: 'O',  num: '8',  x: 115,  y: -24 },
-      { sym: 'Fe', num: '26', x: 205,  y: 22 },
+      { sym: 'C',  num: '6',  x: -95,  y: -16 },
+      { sym: 'O',  num: '8',  x: 115,  y: -28 },
+      { sym: 'Fe', num: '26', x: 185,  y: 22 },
     ];
     elements.forEach((el, idx) => {
       const ey = el.y + Math.sin(t * 4 + idx) * 5;
@@ -1595,18 +1650,75 @@ const BrushKit = {
     });
     pg.pop();
 
-    // LAYER B: VAN GOGH'S FLAME-LIKE CYPRESS TREE WITH GOLDEN IMPASTO RIM HIGHLIGHTS!
+    // =========================================================================
+    // LAYER B: ROLLING IMPASTO ALPILLE HILLS & RIGHT-SIDE SAINT-RÉMY SPIRE CHURCH ("右侧圣雷米尖顶教堂与暖黄灯光村落")!
+    // =========================================================================
+    pg.fill(18, 42, 98, 238);
+    pg.stroke(98, 178, 255);
+    pg.strokeWeight(3.2);
+    pg.beginShape();
+    pg.vertex(-420, 0);
+    for (let x = -420; x <= 420; x += 28) {
+      const hy = -95 - Math.sin(x * 0.014 + 0.8) * 38 - Math.cos(x * 0.032) * 18;
+      pg.vertex(x, hy);
+    }
+    pg.vertex(420, 0);
+    pg.endShape(pg.CLOSE);
+    // Impasto contour strokes on the rolling hills
+    pg.noFill();
+    for (let x = -380; x <= 380; x += 26) {
+      const hy = -68 - Math.sin(x * 0.014 + 0.8) * 30;
+      pg.stroke(x % 52 === 0 ? [255, 218, 68, 210] : [78, 156, 248, 210]);
+      pg.strokeWeight(4.2);
+      pg.arc(x, hy, 34, 18, -0.3, 0.9);
+    }
+
+    // RIGHT SIDE: SAINT-RÉMY SPIRE CHURCH & WARM YELLOW-LIT VILLAGE COTTAGES ("圣雷米尖顶教堂与暖黄灯光")!
     pg.push();
-    pg.translate(-295, 0);
-    for (let b = 0; b < 5; b++) {
-      const bx = (b - 2) * 11;
-      const bh = 255 - Math.abs(b - 2) * 38;
+    pg.translate(275, -18);
+    // Village cottages with glowing chrome-yellow windows
+    [-64, -22, 36].forEach((vx, vIdx) => {
+      pg.fill(26, 48, 96);
+      pg.stroke(255, 218, 78);
+      pg.strokeWeight(2.0);
+      pg.rect(vx, -42 - vIdx * 4, 36, 42 + vIdx * 4, 2);
+      pg.fill(42, 74, 138);
+      pg.triangle(vx - 4, -42 - vIdx * 4, vx + 18, -62 - vIdx * 4, vx + 40, -42 - vIdx * 4);
+      // Warm yellow-lit cottage windows
+      pg.fill(255, 224, 58);
+      pg.noStroke();
+      pg.rect(vx + 8, -28, 8, 12, 1);
+      pg.rect(vx + 20, -28, 8, 12, 1);
+    });
+    // Iconic Tall Saint-Rémy Church Nave, Bell Tower & Soaring Needle Spire piercing the Starry Sky!
+    pg.fill(22, 42, 88);
+    pg.stroke(255, 224, 88);
+    pg.strokeWeight(2.4);
+    pg.rect(-14, -96, 28, 96, 2);
+    // Soaring gothic needle spire
+    pg.fill(32, 64, 128);
+    pg.triangle(-16, -96, 0, -208, 16, -96);
+    // Glowing golden church clock & lancet windows
+    pg.fill(255, 232, 68);
+    pg.noStroke();
+    pg.ellipse(0, -80, 12, 12);
+    pg.rect(-5, -58, 10, 22, 4);
+    pg.pop();
+
+    // =========================================================================
+    // LAYER C: LEFT-SIDE TOWERING BLACK-FLAME TWISTED CYPRESS TREE ("左侧高耸黑色火焰状扭曲柏树")!
+    // =========================================================================
+    pg.push();
+    pg.translate(-295, 10);
+    for (let b = 0; b < 7; b++) {
+      const bx = (b - 3) * 9.5;
+      const bh = 285 - Math.abs(b - 3) * 34;
       pg.noFill();
-      pg.stroke(b % 2 === 0 ? [18, 46, 38] : (b === 1 ? [218, 178, 52] : [48, 96, 62]));
-      pg.strokeWeight(9.5 - Math.abs(b - 2) * 1.5);
+      pg.stroke(b % 2 === 0 ? [12, 26, 22] : (b === 3 ? [228, 184, 52] : [28, 64, 42]));
+      pg.strokeWeight(11.0 - Math.abs(b - 3) * 1.3);
       pg.beginShape();
-      for (let y = 0; y >= -bh; y -= 24) {
-        const wave = Math.sin(y * 0.035 + t * 2.5 + b) * 12;
+      for (let y = 0; y >= -bh; y -= 22) {
+        const wave = Math.sin(y * 0.038 + t * 2.5 + b) * 14;
         pg.vertex(bx + wave, y);
       }
       pg.endShape();
@@ -1614,24 +1726,21 @@ const BrushKit = {
     pg.pop();
 
     // =========================================================================
-    // LAYER C: PAINTERLY IMPASTO VIADUCT & STEAM LOCOMOTIVE DRIVING THE SKY GEARS!
-    // ("桥体与火车本身即由普鲁士蓝、群青、赭石与铬黄厚涂油画刮刀笔触构成！")
+    // LAYER D: PAINTERLY IMPASTO VIADUCT & STEAM LOCOMOTIVE WITH IMPASTO SMOKE SWIRLS!
     // =========================================================================
-    pg.fill(42, 58, 108);
+    pg.fill(34, 52, 102);
     pg.stroke(255, 214, 68);
     pg.strokeWeight(2.6);
     pg.rect(-340, -106, 680, 24);
     for (let a = -260; a <= 260; a += 104) {
-      pg.fill(42, 58, 108);
+      pg.fill(34, 52, 102);
       pg.stroke(255, 214, 68);
       pg.rect(a - 18, -82, 36, 82);
-      // Impasto yellow & cobalt dashes along each bridge pier!
       pg.stroke(98, 178, 255);
-      pg.strokeWeight(3.4);
+      pg.strokeWeight(3.6);
       pg.line(a - 10, -72, a - 10, -14);
       pg.stroke(255, 224, 72);
       pg.line(a + 10, -68, a + 10, -18);
-      // Giant Spinning Brass Gear mounted inside each Viaduct Arch!
       pg.push();
       pg.translate(a + 52, -52);
       pg.rotate(t * (a % 208 === 0 ? 1.2 : -1.2));
@@ -1661,14 +1770,13 @@ const BrushKit = {
       pg.fill(255, 208, 58);
       pg.ellipse(wx, -6, 17, 17);
     });
-    // Steam trail rising from smokestack & morphing directly into Chrome-Yellow & Cobalt Impasto Swirls!
-    for (let p = 0; p < 8; p++) {
+    for (let p = 0; p < 9; p++) {
       const px = 18 - p * 22;
       const py = -66 - p * 17 + Math.sin(t * 7 + p) * 7;
       pg.noFill();
-      pg.stroke(p % 2 === 0 ? [255, 228, 68, 240] : [88, 178, 255, 240]);
-      pg.strokeWeight(4.5);
-      pg.arc(px, py, 24 + p * 8, 16 + p * 6, t * 3 + p, t * 3 + p + 2.1);
+      pg.stroke(p % 2 === 0 ? [255, 228, 68, 245] : [88, 178, 255, 245]);
+      pg.strokeWeight(5.0);
+      pg.arc(px, py, 26 + p * 8, 18 + p * 6, t * 3 + p, t * 3 + p + 2.2);
     }
     pg.pop();
 
@@ -1923,116 +2031,138 @@ const BrushKit = {
     const { t } = state;
     pg.push();
 
-    // 1. Curved 4D Minkowski Spacetime Worldline Grid Ribbon spanning from Past (Left-Top) to Present ("Now" at Pelican Rig)!
-    const numSlices = 18;
-    const startX = 68;
-    const endX = rig.centerX - 18;
+    // =========================================================================
+    // V6.0 TRUE 3D GAUSSIAN SPLATTING · 16 DISCRETE RAZOR-SHARP SOLID SCULPTURES!
+    // ("彻底删除模糊残影！沿三维空间 S 型轨迹陈列 16 尊完全凝固、锐利清晰的 3D 高斯点云实体雕塑。
+    //   每一尊雕塑都用高密度彩色高斯粒子精准定格那一帧的车架、多普勒车把、辐条角度、鹈鹕展翅高度与猫咪拉琴手势！")
+    // =========================================================================
+    const numSculptures = 16;
+    const startX = 62;
+    const endX = rig.centerX - 36;
 
-    // Draw the glowing 4D Worldline Spine & Time-Coordinate Ticks
+    // 1. Curved 3D S-Shaped Minkowski Worldline Ribbon & Discrete Frame Pedestal Rings
     pg.noFill();
     for (let band = -1; band <= 1; band++) {
-      pg.stroke(band === 0 ? [255, 228, 118, 210] : [98, 224, 255, 135]);
-      pg.strokeWeight(band === 0 ? 2.6 : 1.2);
+      pg.stroke(band === 0 ? [255, 228, 118, 225] : [98, 232, 255, 155]);
+      pg.strokeWeight(band === 0 ? 2.8 : 1.4);
       pg.beginShape();
-      for (let i = 0; i <= numSlices; i++) {
-        const u = i / numSlices;
+      for (let i = 0; i <= 32; i++) {
+        const u = i / 32;
         const wx = startX + (endX - startX) * u;
-        const wy = 235 + (rig.groundY - 95 - 235) * Math.pow(u, 0.78) + Math.sin(u * Math.PI * 2.5 - t * 2.2) * 28 + band * (18 + u * 26);
-        pg.vertex(wx, wy);
+        const sCurveY = 195 + (rig.groundY - 78 - 195) * Math.pow(u, 0.82) + Math.sin(u * Math.PI * 2.2) * 42;
+        pg.vertex(wx, sCurveY + band * (14 + u * 24));
       }
       pg.endShape();
     }
 
-    // 2. Render 18 Historical Frame Postures of the Pelican & Cat as Anisotropic 3D Gaussian Point-Cloud Splats!
-    // Each slice represents a past moment (t - dt), showing every historical wheel, wing-flap, and pedal-stroke simultaneously!
-    const historyPalettes = [
-      [245, 168, 72],  // Prehistoric Ochre
-      [78, 238, 198],  // Shang Bronze Patina
-      [255, 138, 168], // High Tang Cinnabar
-      [168, 238, 218], // Song Celadon
-      [78, 168, 255],  // Ming Cobalt Blue
-      [255, 224, 68],  // Van Gogh Starry Gold
-      [198, 138, 255], // Tesla Violet Plasma
-      [118, 252, 255], // Einstein Relativistic Cyan
+    const sculpturePalettes = [
+      [255, 178, 72],  // Ochre Gold
+      [88, 248, 212],  // Shang Turquoise
+      [255, 128, 168], // Tang Cinnabar
+      [168, 245, 224], // Song Celadon
+      [88, 182, 255],  // Ming Cobalt
+      [255, 228, 68],  // Starry Chrome
+      [212, 148, 255], // Tesla Violet
+      [118, 252, 255], // Relativistic Cyan
     ];
 
-    const milestoneLabels = {
-      2:  't₀ · 远古石轮态',
-      6:  't₁ · 殷商青铜态',
-      10: 't₂ · 宋明水墨态',
-      14: 't₃ · 梵高星月态',
-      17: 't₄ · 相对论光锥',
+    const milestoneTags = {
+      1:  'Frame #01 · t-3.0s',
+      5:  'Frame #05 · t-2.2s',
+      9:  'Frame #09 · t-1.4s',
+      13: 'Frame #13 · t-0.6s',
+      16: 'Frame #16 · t-0.1s',
     };
 
-    for (let i = 1; i <= numSlices; i++) {
-      const u = i / numSlices; // 0 = earliest birth/origin, 1 = right behind "NOW"
-      const histT = t - (numSlices - i) * 0.18;
-      const histCrank = histT * (120 / 60) * Math.PI;
-      const depthScale = 0.34 + 0.62 * Math.pow(u, 0.85);
-      const cx = startX + (endX - startX) * u;
-      const cy = 235 + (rig.groundY - 82 - 235) * Math.pow(u, 0.78) + Math.sin(u * Math.PI * 2.5 - t * 2.2) * 28;
-      const col = historyPalettes[i % historyPalettes.length];
-      const alphaCore = Math.round(95 + u * 145);
-      const alphaHalo = Math.round(32 + u * 65);
+    // Helper: Render a Crisp High-Density 3D Gaussian Particle Chain between two points (Zero Blur!)
+    const drawGaussianParticleRod = (x1, y1, x2, y2, count, pSize, colRGB) => {
+      for (let k = 0; k <= count; k++) {
+        const v = k / count;
+        const px = x1 + (x2 - x1) * v;
+        const py = y1 + (y2 - y1) * v;
+        pg.fill(colRGB[0], colRGB[1], colRGB[2], 245);
+        pg.ellipse(px, py, pSize, pSize * 0.85);
+        pg.fill(255, 254, 240, 255);
+        pg.ellipse(px, py, pSize * 0.42, pSize * 0.42);
+      }
+    };
+
+    // 2. Render all 16 Frozen Discrete 3D Gaussian Point-Cloud Sculptures Simultaneously!
+    for (let i = 1; i <= numSculptures; i++) {
+      const u = i / numSculptures;
+      // Strictly quantized frozen timestamp for Sculpture #i so its pose is 100% frozen in space-time!
+      const frozenCrank = i * 0.58;
+      const sc = 0.24 + 0.56 * Math.pow(u, 0.88);
+      const sx = startX + (endX - startX) * u;
+      const sy = 195 + (rig.groundY - 78 - 195) * Math.pow(u, 0.82) + Math.sin(u * Math.PI * 2.2) * 42;
+      const col = sculpturePalettes[i % sculpturePalettes.length];
 
       pg.push();
-      pg.translate(cx, cy);
-      pg.scale(depthScale);
-
-      // Generate the 3D Gaussian Splatting Point-Cloud for this historical frame's posture
-      // (Rear Wheel splats, Front Wheel splats, Pedaling Leg splats, Torso/Wing splats, Head/Beak splats, Cat splats)
-      const wingY = -88 + Math.sin(histCrank * 2) * 18;
-      const pedalX = Math.cos(histCrank) * 22;
-      const pedalY = 12 + Math.sin(histCrank) * 22;
-
-      const splats = [
-        // Rear & Front Wheel Gaussian Ring Splats
-        { x: -78, y: 18, rx: 28, ry: 28, ang: histCrank },
-        { x: 78,  y: 18, rx: 28, ry: 28, ang: histCrank },
-        // Pedaling Leg IK Splats
-        { x: -18, y: -28, rx: 14, ry: 24, ang: 0.3 },
-        { x: pedalX, y: pedalY, rx: 16, ry: 12, ang: histCrank },
-        // Pelican Torso & Flapping Wing Gaussian Splats
-        { x: -6,  y: -52, rx: 36, ry: 22, ang: -0.15 },
-        { x: 4,   y: wingY, rx: 28, ry: 14, ang: Math.sin(histCrank * 2) * 0.4 },
-        // Pelican Neck, Head & Singing Beak Splats
-        { x: 24,  y: -96, rx: 12, ry: 26, ang: 0.2 },
-        { x: 56,  y: -112, rx: 32, ry: 11, ang: -0.08 },
-        // Schrödinger's Cat Gaussian Splat on Rear Rack
-        { x: -92, y: -32 + Math.sin(histCrank * 1.5) * 8, rx: 20, ry: 18, ang: 0.0 },
-      ];
-
+      pg.translate(sx, sy);
+      pg.scale(sc);
       pg.noStroke();
-      splats.forEach((sp, sIdx) => {
-        pg.push();
-        pg.translate(sp.x, sp.y);
-        pg.rotate(sp.ang);
-        // Outer 3D Gaussian covariance halo
-        pg.fill(col[0], col[1], col[2], alphaHalo);
-        pg.ellipse(0, 0, sp.rx * 1.85, sp.ry * 1.85);
-        // Inner high-density 3D Gaussian splat core
-        pg.fill(col[0], col[1], col[2], alphaCore);
-        pg.ellipse(0, 0, sp.rx * 0.95, sp.ry * 0.95);
-        // Bright white-gold specular Gaussian center point
-        pg.fill(255, 252, 235, Math.min(255, alphaCore + 35));
-        pg.ellipse(0, 0, sp.rx * 0.35, sp.ry * 0.35);
-        pg.pop();
+
+      // (A) Frozen Rear & Front Wheels made of discrete 3D Gaussian Ring Particles + Frozen Spoke Angles!
+      [-74, 76].forEach((wx, wIdx) => {
+        const wr = 36;
+        const rimCol = wIdx === 1 ? [98, 242, 255] : [255, 138, 78];
+        for (let p = 0; p < 16; p++) {
+          const a = (p / 16) * Math.PI * 2 + frozenCrank;
+          const rx = wx + Math.cos(a) * wr;
+          const ry = 18 + Math.sin(a) * wr;
+          pg.fill(rimCol[0], rimCol[1], rimCol[2], 248);
+          pg.ellipse(rx, ry, 5.2, 5.2);
+          pg.fill(255, 255, 255, 255);
+          pg.ellipse(rx, ry, 2.2, 2.2);
+        }
+        // 4 Frozen Spoke Particle Chains at exact frozenCrank angle
+        for (let sp = 0; sp < 4; sp++) {
+          const sa = frozenCrank + (sp / 4) * Math.PI * 2;
+          drawGaussianParticleRod(wx, 18, wx + Math.cos(sa) * wr, 18 + Math.sin(sa) * wr, 5, 3.6, col);
+        }
       });
 
-      // Historical Milestone Label along the 4D Spacetime Centipede Tail
-      if (milestoneLabels[i]) {
+      // (B) Frozen Diamond Bike Frame & Stem made of Crisp 3D Gaussian Particles
+      drawGaussianParticleRod(-74, 18, -4, 18, 8, 4.5, col);
+      drawGaussianParticleRod(-4, 18, -36, -54, 7, 4.5, col);
+      drawGaussianParticleRod(-36, -54, 48, -64, 9, 4.5, col);
+      drawGaussianParticleRod(-4, 18, 48, -64, 8, 4.5, col);
+      drawGaussianParticleRod(48, -64, 76, 18, 8, 4.5, col);
+      drawGaussianParticleRod(48, -64, 42, -82, 4, 4.8, [255, 238, 118]);
+
+      // (C) Frozen Doppler Redshift/Blueshift Handlebar on every single 3DGS Sculpture!
+      drawGaussianParticleRod(28, -80, 42, -84, 4, 5.5, [255, 108, 58]);
+      drawGaussianParticleRod(42, -84, 58, -78, 4, 5.5, [88, 242, 255]);
+
+      // (D) Frozen Pelican Torso, Neck, Beak, Pedaling Leg & Exact Wing-Flap Posture
+      const frozenWingY = -98 + Math.sin(frozenCrank * 2.0) * 26;
+      const frozenPedalX = -4 + Math.cos(frozenCrank) * 18;
+      const frozenPedalY = 18 + Math.sin(frozenCrank) * 18;
+      drawGaussianParticleRod(-24, -64, frozenPedalX, frozenPedalY, 7, 4.6, [255, 218, 98]);
+      drawGaussianParticleRod(-24, -68, 12, -86, 7, 7.5, col);
+      drawGaussianParticleRod(6, -84, 42, -82, 6, 4.8, [255, 245, 198]); // Wing locked to handlebar
+      drawGaussianParticleRod(2, -84, -18, frozenWingY, 6, 5.5, [118, 252, 255]); // Frozen wing-tip elevation
+      drawGaussianParticleRod(12, -86, 26, -124, 6, 5.2, col);
+      drawGaussianParticleRod(26, -124, 68, -122, 6, 4.8, [255, 198, 72]);
+
+      // (E) Frozen Schrödinger's Cat & Violin Bow Posture on Rear Rack
+      const bowY = -58 + Math.cos(frozenCrank * 2.0) * 12;
+      drawGaussianParticleRod(-82, -26, -78, -56, 5, 6.2, col);
+      drawGaussianParticleRod(-78, -46, -58, bowY, 4, 3.8, [255, 232, 118]);
+
+      if (milestoneTags[i]) {
         pg.textFont('monospace');
-        pg.textSize(12.5);
-        const lbl = milestoneLabels[i];
-        const lw = pg.textWidth(lbl) + 16;
-        pg.fill(10, 18, 34, 215);
-        pg.stroke(col[0], col[1], col[2], 225);
+        pg.textSize(11.5);
+        const lbl = milestoneTags[i];
+        const lw = pg.textWidth(lbl) + 14;
+        pg.fill(10, 16, 30, 235);
+        pg.stroke(col[0], col[1], col[2], 240);
         pg.strokeWeight(1.5);
-        pg.rect(-lw * 0.5, -148, lw, 22, 4);
+        pg.rect(-lw * 0.5, -162, lw, 20, 4);
         pg.noStroke();
         pg.fill(255, 245, 198);
         pg.textAlign(pg.CENTER, pg.CENTER);
-        pg.text(lbl, 0, -137);
+        pg.text(lbl, 0, -152);
       }
 
       pg.pop();
@@ -2042,34 +2172,54 @@ const BrushKit = {
   },
 
   /**
-   * ERA 11 MASTERPIECE: NIKOLA TESLA WARDENCLYFFE TOWER, NIAGARA HYDRO-PLANT & MILLION-VOLT AC LIGHTNING WAR
+   * ERA 11 MASTERPIECE V6.0: NIKOLA TESLA AC WAR × 1982 CCTV "JOURNEY TO THE WEST: HAVOC IN HEAVEN" (82版《西游记》大闹天宫光学激光、干冰七彩仙雾与凌霄宝殿金光)
    */
   drawTeslaNiagaraAndWardenclyffe(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // 1. Left Side: Niagara Falls Cascading Water & Westinghouse AC Hydro-Electric Turbine Cutaway!
+    // 1. 1982 CCTV "JOURNEY TO THE WEST" LINGXIAO HALL SOUTHERN HEAVEN GATE IN THE UPPER THUNDERCLOUDS ("凌霄宝殿南天门琉璃金光")!
+    pg.push();
+    pg.translate(165, -245);
+    // Golden glazed aura behind Nantianmen
+    pg.noStroke();
+    pg.fill(255, 212, 68, 78 + Math.sin(t * 6) * 24);
+    pg.ellipse(0, -10, 220, 110);
+    // Twin Crimson-Gold Dragon Pillars & Upturned Glazed Golden Roof of Southern Heaven Gate
+    [-58, 58].forEach((px) => {
+      pg.fill(198, 38, 32);
+      pg.stroke(255, 224, 78);
+      pg.strokeWeight(2.2);
+      pg.rect(px - 9, -56, 18, 68, 2);
+    });
+    pg.fill(255, 204, 48);
+    pg.stroke(168, 38, 28);
+    pg.strokeWeight(2.4);
+    pg.quad(-88, -52, 88, -52, 72, -74, -72, -74);
+    pg.fill(188, 28, 28);
+    pg.rect(-32, -66, 64, 16, 2);
+    pg.noStroke();
+    pg.fill(255, 238, 128);
+    pg.textFont('serif');
+    pg.textAlign(pg.CENTER, pg.CENTER);
+    pg.textSize(10.5);
+    pg.text('南天门 · 1000kV', 0, -58);
+    pg.pop();
+
+    // 2. Left Side: Niagara Falls Cascading Water & Westinghouse AC Hydro-Electric Turbine Cutaway!
     pg.push();
     pg.translate(-255, 0);
     pg.fill(38, 48, 72);
     pg.stroke(168, 196, 255);
     pg.strokeWeight(2.0);
     pg.rect(-115, -165, 210, 165, 4);
-    // Thundering Niagara Waterfall Curtain
     for (let w = -95; w <= 5; w += 20) {
       pg.stroke(138, 228, 255, 210);
       pg.strokeWeight(12);
       const dropOff = ((t * 120 + w * 3) % 24);
       pg.line(w, -160, w - 6, -12 + dropOff * 0.2);
     }
-    // Foaming mist at base of Niagara Falls
-    pg.noStroke();
-    pg.fill(228, 248, 255, 195);
-    for (let m = -95; m <= 15; m += 28) {
-      pg.ellipse(m, -8 + Math.sin(t * 8 + m) * 4, 42, 22);
-    }
-    // Spinning Westinghouse Polyphase AC Alternator Turbine on Right of Powerhouse!
     pg.push();
     pg.translate(52, -78);
     pg.rotate(t * 3.8);
@@ -2084,10 +2234,9 @@ const BrushKit = {
     pg.pop();
     pg.pop();
 
-    // 2. Center: Towering Nikola Tesla Wardenclyffe Wireless Transmission Tower ("沃登克里弗巨型球顶塔")!
+    // 3. Center: Nikola Tesla Wardenclyffe Wireless Transmission Tower Shooting Retro 1982 "Havoc in Heaven" Optical Lasers!
     pg.push();
-    pg.translate(25, 0);
-    // Lattice wood-and-steel octagon tower
+    pg.translate(-15, 0);
     pg.stroke(188, 148, 255);
     pg.strokeWeight(2.6);
     pg.line(-56, 0, -18, -195);
@@ -2098,7 +2247,6 @@ const BrushKit = {
       pg.line(-hw, y, hw * 0.8, y - 32);
       pg.line(hw, y, -hw * 0.8, y - 32);
     }
-    // Central copper conductive shaft & Giant 68-foot Metallic Toroid Dome!
     pg.stroke(245, 168, 78);
     pg.strokeWeight(5.0);
     pg.line(0, 0, 0, -215);
@@ -2107,56 +2255,77 @@ const BrushKit = {
     pg.strokeWeight(2.6);
     pg.ellipse(0, -222, 118, 48);
 
-    // Branching Million-Volt Violet-White Fractal Lightning Bolts erupting from the Wardenclyffe Dome!
+    // 1982 CCTV "Journey to the West" Retro Film Optical Laser Beams (Red-Magenta, Cyan-Blue, Golden-Yellow Jagged Cel Lasers)!
+    const laserCols = [
+      [255, 58, 198],  // 82-Xiyou Neon Magenta Optical Laser
+      [78, 252, 255],  // 82-Xiyou Electric Cyan Optical Laser
+      [255, 232, 68],  // 82-Xiyou Golden Cel Laser
+      [188, 118, 255], // Tesla Violet Plasma
+      [98, 255, 168],  // Jade Immortal Beam
+    ];
     pg.noFill();
     for (let b = 0; b < 5; b++) {
       const baseAng = -Math.PI * 0.92 + b * 0.46;
-      pg.stroke(b % 2 === 0 ? [235, 215, 255, 245] : [118, 242, 255, 235]);
-      pg.strokeWeight(3.0);
+      const lc = laserCols[b];
+      pg.stroke(lc[0], lc[1], lc[2], 245);
+      pg.strokeWeight(3.6);
       pg.beginShape();
       let lx = Math.cos(baseAng) * 48;
       let ly = -222 + Math.sin(baseAng) * 20;
       pg.vertex(lx, ly);
       for (let seg = 1; seg <= 5; seg++) {
-        lx += Math.cos(baseAng) * 36 + Math.sin(t * 38 + b * 7 + seg * 13) * 18;
-        ly += Math.sin(baseAng) * 22 + Math.cos(t * 32 + b * 11 + seg * 5) * 14;
+        lx += Math.cos(baseAng) * 38 + Math.sin(t * 38 + b * 7 + seg * 13) * 20;
+        ly += Math.sin(baseAng) * 24 + Math.cos(t * 32 + b * 11 + seg * 5) * 15;
         pg.vertex(lx, ly);
       }
       pg.endShape();
     }
     pg.pop();
 
-    // 3. Right Side: Illuminated 1893 Chicago World's Fair & NYC Skyscraper Skyline wireless-lit by Tesla AC!
-    pg.push();
-    pg.translate(265, 0);
-    [-65, -10, 48].forEach((bx, idx) => {
-      const bw = 46, bh = 125 + idx * 32;
-      pg.fill(26, 22, 52);
-      pg.stroke(198, 158, 255);
-      pg.strokeWeight(1.8);
-      pg.rect(bx, -bh, bw, bh);
-      // Glowing AC incandescent window grid
-      pg.fill(255, 238, 128);
-      pg.noStroke();
-      for (let wy = -bh + 14; wy < -16; wy += 18) {
-        pg.rect(bx + 8, wy, 10, 10, 1);
-        pg.rect(bx + 26, wy, 10, 10, 1);
+    // 4. VERTICAL SKY-ASCENT MILLION-VOLT LIGHTNING CLOUD BRIDGE ("顺百万伏特闪电如踩筋斗云般从瀑布深渊直冲雷云苍穹")!
+    pg.noFill();
+    for (let pass = 0; pass < 2; pass++) {
+      pg.stroke(pass === 0 ? [255, 224, 78, 220] : [138, 248, 255, 245]);
+      pg.strokeWeight(pass === 0 ? 7.5 : 3.2);
+      pg.beginShape();
+      for (let k = 0; k <= 14; k++) {
+        const u = k / 14;
+        const bx = -240 + u * 480;
+        const by = -18 - u * 185 + Math.sin(u * 22 - t * 28) * 10;
+        pg.vertex(bx, by);
       }
-    });
-    pg.pop();
+      pg.endShape();
+    }
+
+    // 5. Rolling 1982-Style Dry-Ice 7-Color Celestial Mist ("82版《西游记》翻滚干冰七彩仙雾")!
+    const mistCols = [
+      [255, 138, 218, 135],
+      [118, 242, 255, 135],
+      [255, 228, 118, 135],
+      [188, 148, 255, 135],
+    ];
+    pg.noStroke();
+    for (let m = 0; m < 8; m++) {
+      const mx = -320 + m * 92 + Math.sin(t * 2.6 + m) * 24;
+      const my = -16 - (m % 3) * 22 + Math.cos(t * 3.2 + m) * 8;
+      pg.fill(...mistCols[m % mistCols.length]);
+      pg.ellipse(mx, my, 128, 38);
+      pg.fill(255, 255, 255, 95);
+      pg.ellipse(mx, my - 4, 76, 22);
+    }
 
     pg.pop();
   },
 
   /**
-   * ERA 12 MASTERPIECE: EINSTEIN GRAVITATIONAL LENSING OBSERVATORY, BLACK HOLE ECLIPSE & 4D SPACETIME GRID
+   * ERA 12 MASTERPIECE V6.0: EINSTEIN GRAVITATIONAL LENSING OBSERVATORY, BLACK HOLE ECLIPSE & SHAKESPEARE "HAMLET" THEATRICAL SPOTLIGHT
    */
   drawEinsteinObservatoryAnd4DCentipede(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // 1. Warped 4D Minkowski Spacetime Grid Funnel bending around a Gravitational-Lensing Black Hole / Eclipse!
+    // 1. Warped 4D Minkowski Spacetime Grid Funnel bending around the Gravitational-Lensing Black Hole!
     const bhX = 35, bhY = -215;
     pg.noFill();
     pg.stroke(88, 212, 255, 135);
@@ -2171,39 +2340,68 @@ const BrushKit = {
       }
       pg.endShape();
     }
-    for (let gy = -280; gy <= -20; gy += 38) {
-      pg.beginShape();
-      for (let gx = -380; gx <= 380; gx += 28) {
-        const dx = gx - bhX, dy = gy - bhY;
-        const distSq = dx * dx + dy * dy + 1800;
-        const pull = 32000 / distSq;
-        pg.vertex(gx - (dx / Math.sqrt(distSq)) * pull, gy - (dy / Math.sqrt(distSq)) * pull);
-      }
-      pg.endShape();
-    }
 
-    // Relativistic Black Hole & Glowing Accretion Disk / 1919 Solar Eclipse Einstein Ring!
+    // Relativistic Black Hole & 1919 Solar Eclipse Einstein Ring
     pg.push();
     pg.translate(bhX, bhY);
     pg.noFill();
-    pg.stroke(255, 198, 72, 225);
-    pg.strokeWeight(5.5);
-    pg.ellipse(0, 0, 88, 88);
-    pg.stroke(118, 242, 255, 210);
-    pg.strokeWeight(3.0);
-    pg.ellipse(0, 0, 128, 42);
+    pg.stroke(255, 198, 72, 235);
+    pg.strokeWeight(6.0);
+    pg.ellipse(0, 0, 92, 92);
+    pg.stroke(118, 242, 255, 220);
+    pg.strokeWeight(3.2);
+    pg.ellipse(0, 0, 138, 44);
     pg.fill(6, 8, 16);
     pg.noStroke();
-    pg.ellipse(0, 0, 68, 68);
+    pg.ellipse(0, 0, 70, 70);
     pg.pop();
 
-    // 2. Canadian Rockies Snow-Capped Peaks & Relativistic Astrophysical Dome Observatory on Right!
+    // 2. SHAKESPEARE'S "HAMLET" THEATRICAL STAGE SPOTLIGHT & EXISTENTIAL SPACETIME SOLILOQUY ("《哈姆雷特》戏剧舞台追光与 To be, or not to be 叩问")!
+    pg.noStroke();
+    const spotSway = Math.sin(t * 1.4) * 28;
+    pg.fill(255, 236, 148, 46);
+    pg.triangle(bhX, bhY, -95 + spotSway, 12, 145 + spotSway, 12);
+    pg.fill(255, 244, 188, 75);
+    pg.ellipse(25 + spotSway, 6, 220, 26);
+
+    // Royal Shakespeare Crimson-Gold Velvet Stage Drapes framing the Left & Right Cosmic Horizon!
+    [-365, 365].forEach((dx, idx) => {
+      const sign = idx === 0 ? 1 : -1;
+      pg.fill(128, 18, 28, 215);
+      pg.stroke(255, 214, 78);
+      pg.strokeWeight(2.2);
+      pg.beginShape();
+      pg.vertex(dx, -295);
+      pg.vertex(dx + sign * 64, -295);
+      pg.quadraticVertex(dx + sign * 28, -145, dx + sign * 48, 0);
+      pg.vertex(dx, 0);
+      pg.endShape(pg.CLOSE);
+    });
+
+    // Hamlet Starlight Skull / Relativistic Clock Emblem & Soliloquy Banner
+    pg.push();
+    pg.translate(-195, -215 + Math.sin(t * 2.2) * 6);
+    pg.fill(16, 22, 38, 230);
+    pg.stroke(255, 224, 98);
+    pg.strokeWeight(2.0);
+    pg.rect(-118, -22, 236, 42, 6);
+    pg.noStroke();
+    pg.fill(255, 236, 138);
+    pg.textFont('Georgia, serif');
+    pg.textAlign(pg.CENTER, pg.CENTER);
+    pg.textSize(11.5);
+    pg.text('"TO BE, OR NOT TO BE" · 哈姆雷特时空追光', 0, -8);
+    pg.fill(138, 248, 255);
+    pg.textSize(10.2);
+    pg.text('16尊凝固3D高斯点云雕塑：过去与现在同时并存', 0, 10);
+    pg.pop();
+
+    // 3. Canadian Rockies Snow-Capped Peaks & Relativistic Astrophysical Dome Observatory on Right
     pg.fill(38, 54, 88, 210);
     pg.stroke(168, 214, 255);
     pg.strokeWeight(2.0);
     pg.triangle(-360, 0, -245, -185, -125, 0);
     pg.triangle(135, 0, 255, -205, 375, 0);
-    // Observatory Dome on Right Peak
     pg.push();
     pg.translate(255, -115);
     pg.fill(238, 244, 255);
@@ -2211,7 +2409,6 @@ const BrushKit = {
     pg.strokeWeight(2.2);
     pg.rect(-48, -36, 96, 36, 2);
     pg.arc(0, -36, 96, 88, Math.PI, Math.PI * 2);
-    // Giant Telescope Tube aiming at the Gravitational Lensing Black Hole
     pg.stroke(255, 214, 82);
     pg.strokeWeight(6.0);
     pg.line(-12, -56, -68, -96);
@@ -2221,14 +2418,111 @@ const BrushKit = {
   },
 
   /**
-   * ERA 13 MASTERPIECE: MODERN OLYMPIC MAIN STADIUM, BLAZING CAULDRON, FIVE RINGS & PEACE DOVES
+   * ERA 13 MASTERPIECE V6.0: DENSE GLOBAL OLYMPIC LANDMARKS (PARTHENON, COLOSSEUM, 2008 BIRD'S NEST, PARIS/LONDON CAULDRON,
+   * 8-LANE TRACK, HURDLES & 100,000 CROWD) × "PLEASANT GOAT / GG BOND" HOT-BLOODED CARTOON ACTION!
    */
   drawModernOlympicStadiumAndDoves(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // 1. Iconic Olympic Five Rings gleaming in the Sky!
+    // 1. DENSE GLOBAL OLYMPIC LANDMARK SKYLINE ("古希腊帕特农神庙 + 罗马斗兽场拱门 + 2008北京鸟巢编织钢架 + 巴黎/伦敦圣火台")!
+    // (A) Left Horizon: Ancient Greek Parthenon Temple & Roman Colosseum Multi-Tiered Arches
+    pg.push();
+    pg.translate(-295, -92);
+    pg.fill(245, 238, 220, 235);
+    pg.stroke(168, 138, 88);
+    pg.strokeWeight(1.8);
+    pg.triangle(-68, -58, 0, -92, 68, -58);
+    for (let c = -52; c <= 52; c += 26) {
+      pg.rect(c - 5, -58, 10, 58);
+    }
+    // Roman Colosseum Arched Facade right beside Parthenon
+    pg.fill(228, 198, 152, 238);
+    pg.rect(76, -68, 96, 68, 3);
+    pg.fill(42, 68, 112);
+    for (let row = 0; row < 2; row++) {
+      for (let a = 0; a < 4; a++) {
+        pg.arc(90 + a * 22, -12 - row * 28, 12, 20, Math.PI, Math.PI * 2);
+      }
+    }
+    pg.pop();
+
+    // (B) Center Stadium Bowl: 2008 Beijing "Bird's Nest" Braided Steel Lattice Canopy & 100,000 Cheering Crowd Wave!
+    pg.fill(238, 245, 255, 242);
+    pg.stroke(28, 118, 218);
+    pg.strokeWeight(2.8);
+    pg.beginShape();
+    pg.vertex(-375, 0);
+    pg.quadraticVertex(-225, -168, 0, -118);
+    pg.quadraticVertex(225, -168, 375, 0);
+    pg.vertex(320, 0);
+    pg.quadraticVertex(0, -76, -320, 0);
+    pg.endShape(pg.CLOSE);
+    // Intricate 2008 Beijing Bird's Nest crisscrossing braided steel trusses!
+    pg.stroke(188, 204, 224, 215);
+    pg.strokeWeight(2.0);
+    for (let b = -310; b <= 310; b += 44) {
+      pg.line(b, -12, b + 58, -112);
+      pg.line(b + 58, -12, b, -112);
+    }
+
+    // 100,000 Cheering Spectator Crowd Wave inside the Stadium Tiers + Giant Scoreboard!
+    for (let tier = 0; tier < 3; tier++) {
+      const ty = -26 - tier * 18;
+      for (let s = -275; s <= 275; s += 18) {
+        const waveUp = Math.sin(s * 0.035 - t * 9.0 + tier) * 6;
+        const shirtCols = [[255, 68, 68], [255, 218, 58], [58, 188, 255], [78, 238, 128]];
+        pg.fill(...shirtCols[(Math.abs(s) + tier) % 4]);
+        pg.noStroke();
+        pg.ellipse(s, ty + waveUp, 8, 8);
+      }
+    }
+    // Giant Stadium LED Scoreboard & High-Jump / Javelin Field Action!
+    pg.fill(12, 22, 38, 242);
+    pg.stroke(255, 218, 68);
+    pg.strokeWeight(2.2);
+    pg.rect(-108, -162, 216, 36, 4);
+    pg.noStroke();
+    pg.fill(98, 255, 158);
+    pg.textFont('monospace');
+    pg.textAlign(pg.CENTER, pg.CENTER);
+    pg.textSize(11.5);
+    pg.text('🏆 OLYMPIC FINAL · WR 78.4 KM/H [NEW RECORD!]', 0, -144);
+
+    // (C) Right Horizon: Paris Hot-Air Balloon Cauldron & Blazing Olympic Flame Tower
+    pg.push();
+    pg.translate(255, 0);
+    pg.fill(228, 236, 248);
+    pg.stroke(28, 118, 218);
+    pg.quad(-24, 0, 24, 0, 12, -185, -36, -172);
+    pg.noStroke();
+    pg.fill(255, 128, 32, 235);
+    pg.triangle(-32, -178, -8, -255 - Math.sin(t * 12) * 14, 14, -182);
+    pg.fill(255, 228, 68, 245);
+    pg.triangle(-22, -178, -8, -228 - Math.cos(t * 15) * 10, 6, -182);
+    pg.pop();
+
+    // (D) 8-Lane Red Tartan Running Track & Olympic Hurdle Frames along the Foreground!
+    pg.fill(212, 58, 44, 235);
+    pg.stroke(255, 255, 255, 210);
+    pg.strokeWeight(1.4);
+    pg.rect(-385, -6, 770, 32);
+    for (let ln = 1; ln <= 4; ln++) {
+      pg.line(-385, -6 + ln * 6.5, 385, -6 + ln * 6.5);
+    }
+    // Olympic Hurdles on the track
+    [-210, -45, 135, 295].forEach((hx) => {
+      pg.stroke(255, 255, 255);
+      pg.strokeWeight(3.2);
+      pg.line(hx - 12, 16, hx - 8, -18);
+      pg.line(hx + 12, 16, hx + 8, -18);
+      pg.stroke(28, 118, 218);
+      pg.strokeWeight(4.5);
+      pg.line(hx - 12, -18, hx + 12, -18);
+    });
+
+    // 2. Iconic Olympic Five Rings + "PLEASANT GOAT / GG BOND" (《喜羊羊与灰太狼》《猪猪侠》) HOT-BLOODED CARTOON ACTION LINES & COMIC BURSTS!
     pg.push();
     pg.translate(0, -225);
     const ringCols = [
@@ -2246,66 +2540,63 @@ const BrushKit = {
     });
     pg.pop();
 
-    // 2. Sweeping Modern Olympic Main Stadium Canopy & Blazing Olympic Cauldron Tower!
-    pg.fill(242, 248, 255, 240);
-    pg.stroke(28, 118, 218);
-    pg.strokeWeight(2.6);
-    pg.beginShape();
-    pg.vertex(-360, 0);
-    pg.quadraticVertex(-220, -145, 0, -96);
-    pg.quadraticVertex(220, -145, 360, 0);
-    pg.vertex(310, 0);
-    pg.quadraticVertex(0, -68, -310, 0);
-    pg.endShape(pg.CLOSE);
-
-    // Soaring Olympic Flame Cauldron Tower on Right
+    // Hot-Blooded Cartoon Starburst Badge ("猪猪侠超级棒棒糖 / 喜羊羊破风冲刺漫画爆炸星标")!
     pg.push();
-    pg.translate(225, 0);
-    pg.fill(228, 236, 248);
-    pg.stroke(28, 118, 218);
-    pg.quad(-24, 0, 24, 0, 12, -185, -36, -172);
-    // Blazing Olympic Cauldron Flame
+    pg.translate(-225, -185 + Math.sin(t * 12) * 5);
+    pg.fill(255, 232, 42);
+    pg.stroke(238, 32, 32);
+    pg.strokeWeight(2.8);
+    pg.beginShape();
+    for (let k = 0; k < 16; k++) {
+      const a = (k / 16) * Math.PI * 2;
+      const rad = (k % 2 === 0) ? 58 : 36;
+      pg.vertex(Math.cos(a) * rad * 1.45, Math.sin(a) * rad * 0.72);
+    }
+    pg.endShape(pg.CLOSE);
     pg.noStroke();
-    pg.fill(255, 128, 32, 235);
-    pg.triangle(-32, -178, -8, -255 - Math.sin(t * 12) * 14, 14, -182);
-    pg.fill(255, 228, 68, 245);
-    pg.triangle(-22, -178, -8, -228 - Math.cos(t * 15) * 10, 6, -182);
+    pg.fill(218, 18, 28);
+    pg.textFont('serif');
+    pg.textAlign(pg.CENTER, pg.CENTER);
+    pg.textSize(12.5);
+    pg.text('💥 热血国漫破风冲刺!!', 0, 0);
     pg.pop();
 
-    // 3. Flock of White Peace Doves soaring upward across the Stadium!
-    for (let d = 0; d < 9; d++) {
-      const dx = -260 + d * 64 + Math.sin(t * 3 + d) * 18;
-      const dy = -125 - ((t * 38 + d * 24) % 115);
-      const flap = Math.sin(t * 14 + d * 1.5) * 10;
-      pg.stroke(255, 255, 255);
-      pg.strokeWeight(2.8);
-      pg.noFill();
-      pg.bezier(dx - 14, dy - flap, dx - 3, dy, dx + 3, dy, dx + 14, dy - flap);
+    // High-Saturation Cartoon Speed Lines radiating across the track
+    pg.stroke(255, 238, 68, 185);
+    pg.strokeWeight(2.6);
+    for (let s = 0; s < 10; s++) {
+      const sy = -165 + s * 16;
+      const sx = ((t * 480 + s * 97) % 680) - 340;
+      pg.line(sx, sy, sx + 78, sy);
     }
 
     pg.pop();
   },
 
   /**
-   * ERA 14 MASTERPIECE: SILICON VALLEY GARAGE, TEKTRONIX OSCILLOSCOPE & 8-BIT OPEN-SOURCE WEB TREE
+   * ERA 14 MASTERPIECE V6.0: SILICON VALLEY GARAGE × "GARDEN OF EDEN" GLOWING RAINBOW APPLE TREE
+   * × "DREAM OF THE RED CHAMBER: GRANNY LIU IN CYBER GRAND VIEW GARDEN" (《红楼梦》刘姥姥逛赛博大观园芯片微距园林)
    */
   drawSiliconValleyGarageAnd8BitWeb(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // 1. Left: Legendary Silicon Valley Garage, Mainframe Reel-to-Reel Tape Drive & Tektronix Oscilloscope!
+    // =========================================================================
+    // 1. MACRO LEFT: SILICON VALLEY GARAGE & "GARDEN OF EDEN" TREE OF KNOWLEDGE ("《伊甸园》发光彩虹缺口智慧苹果树")!
+    // =========================================================================
     pg.push();
-    pg.translate(-215, 0);
+    pg.translate(-235, 0);
     pg.fill(32, 54, 44);
     pg.stroke(98, 255, 158);
     pg.strokeWeight(2.2);
-    pg.rect(-115, -135, 220, 135, 4);
-    pg.triangle(-128, -135, -5, -182, 118, -135);
-    // Spinning Mainframe Magnetic Tape Reels
-    [-65, -15].forEach((rx, idx) => {
+    pg.rect(-125, -145, 235, 145, 4);
+    pg.triangle(-138, -145, -8, -195, 122, -145);
+
+    // Spinning Mainframe Magnetic Tape Waterwheels ("旋转磁带水车")
+    [-78, -28].forEach((rx, idx) => {
       pg.push();
-      pg.translate(rx, -82);
+      pg.translate(rx, -86);
       pg.rotate(t * (idx === 0 ? 3.5 : -3.5));
       pg.fill(22, 34, 28);
       pg.stroke(118, 255, 168);
@@ -2314,83 +2605,167 @@ const BrushKit = {
       pg.line(0, -16, 0, 16);
       pg.pop();
     });
-    // Tektronix Green CRT Oscilloscope Screen
-    pg.fill(8, 28, 16);
+
+    // Glowing "Garden of Eden" Tree of Knowledge of Good and Evil with Rainbow-Striped Bitten Apple!
+    pg.push();
+    pg.translate(48, 0);
+    // Golden circuit trunk & canopy
+    pg.stroke(218, 168, 68);
+    pg.strokeWeight(7.0);
+    pg.line(0, 0, 0, -128);
+    pg.line(0, -92, -38, -142);
+    pg.line(0, -98, 42, -148);
+    pg.fill(18, 98, 54, 225);
     pg.stroke(98, 255, 158);
-    pg.rect(22, -108, 68, 52, 4);
-    pg.noFill();
-    pg.beginShape();
-    for (let x = 26; x <= 86; x += 6) {
-      pg.vertex(x, -82 + Math.sin((x - 26) * 0.22 - t * 12) * 16);
-    }
-    pg.endShape();
+    pg.strokeWeight(2.2);
+    pg.ellipse(0, -158, 128, 78);
+    // Glowing Rainbow Apple of Eden hanging at the center of the Tree!
+    const ax = 6, ay = -132 + Math.sin(t * 4) * 3;
+    const rbApple = [[98, 198, 72], [255, 218, 48], [255, 138, 38], [238, 48, 58], [168, 68, 198], [58, 168, 248]];
+    pg.noStroke();
+    rbApple.forEach((rc, rIdx) => {
+      pg.fill(...rc);
+      pg.rect(ax - 14, ay - 12 + rIdx * 4, 28, 4.5, 2);
+    });
+    // Iconic bite taken out of the right side of the Eden Apple + glowing leaf
+    pg.fill(18, 98, 54);
+    pg.ellipse(ax + 15, ay - 1, 11, 12);
+    pg.fill(118, 255, 168);
+    pg.ellipse(ax + 3, ay - 17, 10, 5);
+    pg.pop();
     pg.pop();
 
-    // 2. Right & Sky: 8-Bit Retro Pixel-Art Towers & Global Open-Source TCP/IP / WWW Node Constellation!
+    // =========================================================================
+    // 2. MICRO RIGHT: TRANSPARENT GREEN PCB MOTHERBOARD CUTAWAY — "CYBER GRAND VIEW GARDEN" (《红楼梦》“赛博大观园/桃花源”微距奇观)!
+    // =========================================================================
     pg.push();
-    pg.translate(145, 0);
-    const nodes = [
-      { x: -95, y: -195, label: 'ARPANET · 1969' },
-      { x: 15,  y: -235, label: 'TCP/IP · WWW' },
-      { x: 135, y: -185, label: 'GNU / LINUX' },
-      { x: 25,  y: -125, label: 'OPEN SOURCE' },
-    ];
-    pg.stroke(98, 255, 158, 195);
-    pg.strokeWeight(2.2);
-    pg.line(nodes[0].x, nodes[0].y, nodes[1].x, nodes[1].y);
-    pg.line(nodes[1].x, nodes[1].y, nodes[2].x, nodes[2].y);
-    pg.line(nodes[0].x, nodes[0].y, nodes[3].x, nodes[3].y);
-    pg.line(nodes[2].x, nodes[2].y, nodes[3].x, nodes[3].y);
+    pg.translate(135, 0);
+    // Giant Translucent Emerald PCB Die-Shot Frame
+    pg.fill(10, 52, 32, 232);
+    pg.stroke(255, 218, 88);
+    pg.strokeWeight(2.8);
+    pg.rect(-195, -225, 415, 225, 8);
 
-    nodes.forEach((nd) => {
-      pg.textFont('monospace');
-      pg.textSize(10.5);
-      const nw = pg.textWidth(nd.label) + 18;
-      pg.fill(12, 38, 24, 235);
-      pg.stroke(98, 255, 158);
-      pg.strokeWeight(2.0);
-      pg.rect(nd.x - nw * 0.5, nd.y - 14, nw, 28, 4);
+    // Gilded Copper-Foil Winding Corridors & Zigzag Nine-Turn Bridge ("金碧辉煌的铜箔九曲回廊")!
+    pg.noFill();
+    pg.stroke(255, 208, 68, 220);
+    pg.strokeWeight(3.2);
+    pg.beginShape();
+    pg.vertex(-175, -24);
+    pg.vertex(-115, -52);
+    pg.vertex(-55, -24);
+    pg.vertex(15, -56);
+    pg.vertex(85, -24);
+    pg.vertex(155, -52);
+    pg.vertex(205, -28);
+    pg.endShape();
+
+    // Three Ornate Capacitor & IC-Chip Upturned-Eave Grand View Garden Pavilions ("怡红院 / 潇湘馆 / 蘅芜苑 电容飞檐亭台")!
+    const pavilions = [
+      { px: -115, py: -62, name: '怡红院·CPU', col: [238, 58, 98] },
+      { px: 12,   py: -82, name: '大观楼·RAM', col: [255, 214, 68] },
+      { px: 138,  py: -62, name: '潇湘馆·BUS', col: [88, 248, 192] },
+    ];
+    pavilions.forEach((pv) => {
+      pg.push();
+      pg.translate(pv.px, pv.py);
+      // Electrolytic Capacitor Golden Pillars
+      pg.fill(28, 44, 88);
+      pg.stroke(255, 218, 88);
+      pg.strokeWeight(1.8);
+      pg.rect(-28, -54, 12, 54, 2);
+      pg.rect(16, -54, 12, 54, 2);
+      // Classical Chinese Upturned Double-Eave Pavilion Roof etched in Gold Copper Foil!
+      pg.fill(pv.col[0], pv.col[1], pv.col[2], 230);
+      pg.stroke(255, 232, 118);
+      pg.strokeWeight(2.2);
+      pg.beginShape();
+      pg.vertex(-48, -54);
+      pg.quadraticVertex(0, -86, 48, -54);
+      pg.quadraticVertex(0, -64, -48, -54);
+      pg.endShape(pg.CLOSE);
+      // Plaque
+      pg.fill(12, 28, 20, 240);
+      pg.rect(-34, -48, 68, 18, 3);
       pg.noStroke();
-      pg.fill(148, 255, 188);
+      pg.fill(255, 242, 158);
+      pg.textFont('serif');
       pg.textAlign(pg.CENTER, pg.CENTER);
-      pg.text(nd.label, nd.x, nd.y);
+      pg.textSize(9.8);
+      pg.text(pv.name, 0, -39);
+      pg.pop();
     });
+
+    // Flying Glowing Pixel Peach Blossoms ("飞舞的发光像素桃花雨") drifting across the Cyber Grand View Garden!
+    pg.noStroke();
+    for (let p = 0; p < 18; p++) {
+      const bx = -175 + ((p * 47 + t * 55) % 375);
+      const by = -205 + ((p * 31 + t * 38) % 185);
+      pg.fill(p % 2 === 0 ? [255, 118, 178, 235] : [118, 255, 188, 235]);
+      pg.rect(bx, by, 6, 6, 1);
+      pg.fill(255, 245, 210);
+      pg.rect(bx + 1.5, by + 1.5, 3, 3);
+    }
+
+    // Header Banner inside the PCB Garden
+    pg.fill(10, 32, 22, 235);
+    pg.stroke(98, 255, 158);
+    pg.strokeWeight(1.8);
+    pg.rect(-175, -214, 370, 26, 4);
+    pg.noStroke();
+    pg.fill(255, 232, 118);
+    pg.textFont('serif');
+    pg.textAlign(pg.CENTER, pg.CENTER);
+    pg.textSize(11.2);
+    pg.text('🌸 微距钻入绿色PCB主板：《红楼梦》“刘姥姥游赛博大观园/桃花源”', 10, -201);
     pg.pop();
 
     pg.pop();
   },
 
   /**
-   * ERA 15 MASTERPIECE: 5-CONTINENT HOLOGRAPHIC EARTH VILLAGE, HIGH-SPEED BULLET TRAIN & OPEN-SOURCE FIBER ARCS
+   * ERA 15 MASTERPIECE V6.0: ULTRA-DETAILED FUXING/SHINKANSEN BULLET TRAIN, CONTAINER PORT GANTRY CRANES,
+   * 5-CONTINENT SKYLINE × "THREE-BODY" (《三体》二维智子展开、强互作用力“水滴”伴飞与“古筝行动”纳米飞刃金光)
    */
   drawGlobalizationMetropolisAndAuroraGlobe(pg, cx, baseY, scale = 1.0, t = 0) {
     pg.push();
     pg.translate(cx, baseY);
     pg.scale(scale);
 
-    // 1. Sky Center: Giant Rotating 3D Holographic Earth Village with 5 Connected Continents!
+    // =========================================================================
+    // 1. SKY VAULT: "THREE-BODY" 2D SOPHON UNFOLDING GEOMETRIC LIGHT ARRAY & ROTATING 5-CONTINENT EARTH!
+    // =========================================================================
     pg.push();
-    pg.translate(0, -210);
-    pg.fill(18, 88, 138, 165);
+    pg.translate(0, -215);
+    // Unfolded 2D Sophon ("《三体》二维智子展开巨型几何光阵与星空之眼")
+    pg.push();
+    pg.rotate(t * 0.25);
+    pg.noFill();
+    pg.stroke(138, 248, 255, 145);
+    pg.strokeWeight(1.8);
+    pg.ellipse(0, 0, 320, 148);
+    pg.ellipse(0, 0, 148, 320);
+    pg.stroke(255, 224, 118, 155);
+    pg.rect(-105, -105, 210, 210);
+    pg.pop();
+
+    // 3D Holographic Earth
+    pg.fill(18, 88, 138, 175);
     pg.stroke(98, 255, 232);
     pg.strokeWeight(2.4);
-    pg.ellipse(0, 0, 136, 136);
+    pg.ellipse(0, 0, 132, 132);
     pg.noFill();
-    for (let lat = -42; lat <= 42; lat += 28) {
-      const w = Math.sqrt(Math.max(10, 68 * 68 - lat * lat)) * 2;
-      pg.ellipse(0, lat, w, 16);
+    for (let lat = -40; lat <= 40; lat += 26) {
+      const w = Math.sqrt(Math.max(10, 66 * 66 - lat * lat)) * 2;
+      pg.ellipse(0, lat, w, 15);
     }
-    for (let lon = 0; lon < 3; lon++) {
-      const rotW = Math.abs(Math.sin(t * 0.8 + lon * 1.05)) * 136;
-      pg.ellipse(0, 0, rotW, 136);
-    }
-    // 5 Glowing Continent Hubs linked by Golden-Cyan Open-Source Fiber Arcs!
+
     const hubs = [
-      { x: -195, y: -18, name: 'ASIA · 亚洲' },
+      { x: -205, y: -22, name: 'ASIA · 亚洲高铁' },
       { x: -115, y: -58, name: 'EUROPE · 欧洲' },
-      { x: 115,  y: -58, name: 'N.AMERICA · 北美' },
-      { x: -135, y: 38,  name: 'AFRICA · 非洲' },
-      { x: 175,  y: 28,  name: 'LATAM · 拉美' },
+      { x: 118,  y: -58, name: 'N.AMERICA · 北美' },
+      { x: -145, y: 36,  name: 'AFRICA · 非洲' },
+      { x: 185,  y: 28,  name: 'LATAM · 拉美' },
     ];
     hubs.forEach((hb) => {
       pg.noFill();
@@ -2410,26 +2785,136 @@ const BrushKit = {
     });
     pg.pop();
 
-    // 2. Midground: Sleek Aerodynamic High-Speed Bullet Train ("跨国高铁复兴号/欧洲之星") streaking across the Viaduct!
-    pg.fill(38, 78, 112);
-    pg.stroke(118, 248, 232);
-    pg.strokeWeight(2.0);
-    pg.rect(-360, -92, 720, 18);
-    const bulletX = ((t * 165) % 680) - 340;
+    // =========================================================================
+    // 2. DISTANT HORIZON: "OPERATION GUZHENG" NANO-SLICER GOLDEN BEAMS, CONTAINER PORT GANTRY CRANES & 5-CONTINENT SKYLINE!
+    // =========================================================================
+    // "Operation Guzheng" ("古筝行动"纳米飞刃切开云层的平行璀璨金光)!
+    pg.stroke(255, 236, 128, 185);
+    pg.strokeWeight(1.8);
+    for (let gz = 0; gz < 5; gz++) {
+      const gy = -148 + gz * 9;
+      pg.line(-380, gy, 380, gy - 8);
+    }
+
+    // Left Container Port Gantry Cranes ("集装箱港口巨型龙门吊") & Global Landmarks
     pg.push();
-    pg.translate(bulletX, -92);
-    pg.fill(245, 250, 255);
-    pg.stroke(28, 148, 218);
+    pg.translate(-285, -96);
+    pg.stroke(238, 98, 48);
+    pg.strokeWeight(3.2);
+    pg.line(-38, 0, -28, -92);
+    pg.line(18, 0, 8, -92);
+    pg.line(-48, -82, 68, -96);
+    // Suspended ISO Shipping Container
+    pg.fill(38, 138, 228);
+    pg.stroke(255, 224, 88);
+    pg.strokeWeight(1.6);
+    pg.rect(24, -64 + Math.sin(t * 3) * 6, 36, 18, 2);
+    pg.pop();
+
+    // Right 5-Continent Landmark Silhouettes (Oriental Pearl Tower, Eiffel Tower, Wind Turbines)
+    pg.push();
+    pg.translate(275, -96);
+    pg.stroke(118, 248, 232);
+    pg.strokeWeight(2.4);
+    pg.line(0, 0, 0, -128);
+    pg.fill(238, 68, 128);
+    pg.ellipse(0, -48, 24, 24);
+    pg.ellipse(0, -92, 16, 16);
+    pg.pop();
+
+    // =========================================================================
+    // 3. MIDGROUND: ULTRA-DETAILED FUXING / SHINKANSEN EAGLE-NOSE HIGH-SPEED BULLET TRAIN ON CROSS-SEA BOX-GIRDER VIADUCT!
+    // =========================================================================
+    // Cross-Sea Box-Girder Viaduct & Catenary Power Poles ("跨海箱梁高架桥与高压接触网")
+    pg.fill(42, 68, 98);
+    pg.stroke(118, 248, 232);
     pg.strokeWeight(2.2);
+    pg.rect(-385, -88, 770, 22);
+    for (let p = -320; p <= 320; p += 128) {
+      pg.fill(34, 54, 82);
+      pg.rect(p - 14, -66, 28, 66);
+      // High-voltage overhead catenary mast & wire
+      pg.stroke(168, 218, 245);
+      pg.strokeWeight(2.0);
+      pg.line(p, -88, p, -142);
+      pg.line(p - 16, -138, p + 16, -138);
+    }
+    pg.stroke(198, 238, 255, 190);
+    pg.strokeWeight(1.5);
+    pg.line(-385, -138, 385, -138);
+
+    // Sleek Aerodynamic Fuxing CR400AF / Shinkansen Double-Deck Bullet Train ("复兴号流线型鹰嘴车头 + 受电弓电火花 + 双层车厢内景")!
+    const bulletX = ((t * 145) % 620) - 310;
+    pg.push();
+    pg.translate(bulletX, -88);
+    // Main aerodynamic body & elongated eagle-nose cone
+    pg.fill(246, 250, 255);
+    pg.stroke(28, 128, 208);
+    pg.strokeWeight(2.4);
     pg.beginShape();
-    pg.vertex(-115, 0);
-    pg.vertex(95, 0);
-    pg.quadraticVertex(145, -2, 115, -24);
-    pg.vertex(-115, -24);
+    pg.vertex(-185, 0);
+    pg.vertex(115, 0);
+    pg.bezierVertex(165, 0, 195, -8, 208, -4);
+    pg.bezierVertex(185, -24, 138, -38, 88, -42);
+    pg.vertex(-185, -42);
     pg.endShape(pg.CLOSE);
-    pg.fill(28, 168, 238);
+    // Signature Fuxing Crimson-Gold Dragon Stripe along fuselage
+    pg.fill(218, 38, 38);
     pg.noStroke();
-    pg.rect(-110, -14, 215, 5, 2);
+    pg.rect(-182, -22, 315, 5, 2);
+    pg.fill(255, 208, 68);
+    pg.rect(-182, -16, 295, 3, 1);
+    // Cockpit Wrap-Around Windshield & Double-Deck Illuminated Passenger Windows!
+    pg.fill(18, 38, 68);
+    pg.quad(92, -38, 142, -26, 132, -16, 86, -24);
+    for (let w = -165; w <= 65; w += 26) {
+      // Upper deck & lower deck lit windows
+      pg.fill(255, 242, 158);
+      pg.rect(w, -37, 16, 8, 2);
+      pg.fill(168, 238, 255);
+      pg.rect(w, -12, 16, 7, 2);
+    }
+    // Roof Pantograph & Crackling High-Voltage Catenary Arc Sparks ("车顶受电弓与高压接触网电火花")!
+    pg.stroke(218, 232, 248);
+    pg.strokeWeight(2.4);
+    pg.line(-45, -42, -62, -46);
+    pg.line(-62, -46, -42, -50);
+    // Bright cyan-white electric arc spark where pantograph touches the -50 catenary wire!
+    pg.stroke(138, 255, 255);
+    pg.strokeWeight(2.8);
+    for (let sp = 0; sp < 4; sp++) {
+      const sa = sp * 1.5 + t * 35;
+      pg.line(-42, -50, -42 + Math.cos(sa) * 14, -50 + Math.sin(sa) * 10);
+    }
+    pg.pop();
+
+    // =========================================================================
+    // 4. FOREGROUND COMPANION: "THREE-BODY" STRONG-INTERACTION SILVER "WATERDROP" PROBE ("《三体》绝对光滑银色“水滴”探测器伴飞")!
+    // =========================================================================
+    const dropX = 148 + Math.sin(t * 4.5) * 18;
+    const dropY = -142 + Math.cos(t * 5.2) * 10;
+    pg.push();
+    pg.translate(dropX, dropY);
+    // Blue-white plasma propulsion rings behind the rounded head (pointing right)
+    pg.noFill();
+    for (let r = 1; r <= 3; r++) {
+      pg.stroke(98, 242, 255, 230 - r * 55);
+      pg.strokeWeight(2.2);
+      pg.ellipse(-28 - r * 10, 0, 8, 18 + r * 6);
+    }
+    // Mirror-smooth liquid-mercury teardrop hull reflecting the entire cosmos
+    pg.fill(228, 242, 255);
+    pg.stroke(255, 255, 255);
+    pg.strokeWeight(2.0);
+    pg.beginShape();
+    pg.vertex(-36, 0); // Razor-sharp tail tip
+    pg.bezierVertex(-12, -16, 18, -18, 28, 0);
+    pg.bezierVertex(18, 18, -12, 16, -36, 0);
+    pg.endShape(pg.CLOSE);
+    // Specular starlight reflection highlight on the Waterdrop surface
+    pg.fill(255, 255, 255);
+    pg.noStroke();
+    pg.ellipse(8, -5, 22, 6);
     pg.pop();
 
     pg.pop();
@@ -2443,9 +2928,6 @@ const BrushKit = {
 
     pg.push();
 
-    // =========================================================================
-    // 00 INTRO: SCI-FI HOLOGRAPHIC SCANNER + IMAX DOCUMENTARY MACRO LOUPE
-    // =========================================================================
     if (era.id === 'intro') {
       const scanY = LETTERBOX_TOP + 40 + ((t * 85) % (H - LETTERBOX_TOP - LETTERBOX_BOTTOM - 80));
       pg.stroke(88, 248, 224, Math.round(145 * seamFade));
@@ -2476,9 +2958,6 @@ const BrushKit = {
       pg.text('🔬 IMAX 微距：2.5x 擒纵齿轮', lx, ly + lr + 14);
     }
 
-    // =========================================================================
-    // 01 EAST AFRICA: NAT-GEO WILDLIFE DOCUMENTARY + ACOUSTIC SEISMOGRAPH
-    // =========================================================================
     else if (era.id === 'era01') {
       const bx = W - 325, by = LETTERBOX_TOP + 10, bw = 305, bh = 66;
       pg.fill(12, 14, 18, Math.round(215 * seamFade));
@@ -2511,33 +2990,25 @@ const BrushKit = {
       pg.endShape();
     }
 
-    // =========================================================================
-    // 02 NOAH'S ARK: FULL-SCREEN HANDHELD IR NIGHT-VISION CAMCORDER (1ST HALF) -> CLASSICAL OIL PAINTING FRAME (2ND HALF)
-    // =========================================================================
     else if (era.id === 'era02') {
       const nvAmt = (cam && cam.nightVisionAmount) ? cam.nightVisionAmount * seamFade : 0;
       const oilAmt = (cam && cam.oilImpastoAmount) ? cam.oilImpastoAmount * seamFade : 0;
 
       if (nvAmt > 0.05) {
         const na = Math.round(235 * nvAmt);
-        // 1. Full-Screen Camcorder L-Shaped Viewfinder Corner Brackets!
         const cL = 38;
         const leftX = 26, rightX = W - 26;
         const topY = LETTERBOX_TOP + 14, botY = H - LETTERBOX_BOTTOM - 14;
         pg.stroke(92, 255, 148, na);
         pg.strokeWeight(2.8);
         pg.noFill();
-        // Top-Right Bracket
         pg.line(rightX - cL, topY, rightX, topY);
         pg.line(rightX, topY, rightX, topY + cL);
-        // Bottom-Left Bracket
         pg.line(leftX, botY - cL, leftX, botY);
         pg.line(leftX, botY, leftX + cL, botY);
-        // Bottom-Right Bracket
         pg.line(rightX - cL, botY, rightX, botY);
         pg.line(rightX, botY, rightX, botY - cL);
 
-        // 2. Handheld Autofocus Crosshair Box locking onto Noah's Ark in the Storm!
         const afX = W * 0.56 + Math.sin(t * 7.5) * 8;
         const afY = 335 + Math.cos(t * 6.2) * 6;
         pg.stroke(92, 255, 148, Math.round(190 * nvAmt));
@@ -2552,19 +3023,16 @@ const BrushKit = {
         pg.textSize(10.5);
         pg.text('[AF-LOCK · 诺亚方舟 142m · IR NIGHT-SHOT]', afX, afY + 44);
 
-        // 3. Top-Right Camcorder REC Indicator, Battery Icon & Heartbeat ECG
         const hx = W - 320, hy = LETTERBOX_TOP + 20;
         pg.fill(8, 24, 14, Math.round(215 * nvAmt));
         pg.stroke(92, 255, 148, na);
         pg.strokeWeight(1.8);
         pg.rect(hx, hy, 282, 64, 4);
-        // Blinking Red REC dot
         if (Math.sin(t * 8) > -0.2) {
           pg.fill(255, 52, 52, na);
           pg.noStroke();
           pg.ellipse(hx + 16, hy + 16, 10, 10);
         }
-        // Battery icon
         pg.noFill();
         pg.stroke(92, 255, 148, na);
         pg.strokeWeight(1.6);
@@ -2588,21 +3056,9 @@ const BrushKit = {
           pg.vertex(ex, hy + 46 + pulse);
         }
         pg.endShape();
-
-        // 4. Simulated Raindrops Beading & Sliding Down the Camcorder Lens Glass!
-        pg.noFill();
-        pg.stroke(168, 255, 208, Math.round(145 * nvAmt));
-        pg.strokeWeight(1.5);
-        for (let d = 0; d < 9; d++) {
-          const dx = 110 + (d * 137) % (W - 220);
-          const dy = LETTERBOX_TOP + 40 + ((d * 97 + t * 55) % (H - LETTERBOX_TOP - LETTERBOX_BOTTOM - 80));
-          pg.ellipse(dx, dy, 10, 14);
-          pg.line(dx, dy - 14, dx, dy - 7);
-        }
       }
 
       if (oilAmt > 0.05) {
-        // Second Half: Classical Impasto Oil Painting Badge in Top-Right
         const oa = Math.round(230 * oilAmt);
         const bx = W - 325, by = LETTERBOX_TOP + 12;
         pg.fill(32, 22, 14, oa);
@@ -2618,12 +3074,8 @@ const BrushKit = {
       }
     }
 
-    // =========================================================================
-    // 03 SHANG ANYANG: ZERO-OVERLAP INTERVIEW (0..0.50) -> VARIETY SHOW CAPTION (0.52..0.94)
-    // =========================================================================
     else if (era.id === 'era03') {
       if (localProgress < 0.50) {
-        // First Half: Live Diviner Reporter on the ground + Bottom Breaking News Ticker
         const repX = rig.frontWheel.x + 115;
         const repY = rig.groundY;
         pg.push();
@@ -2660,7 +3112,6 @@ const BrushKit = {
         pg.textAlign(pg.LEFT, pg.CENTER);
         pg.text('【大邑商快讯】特派贞人连线采访玄鸟车队：商王武丁主持太室大典，司母戊鼎正式开炉！', 204, ny + 14);
       } else {
-        // Second Half (after Oracle Scroll fades out!): Variety Show Caption cleanly occupies Top-Right (`x=865..1245, y=64..112`) with ZERO overlap!
         const popScale = 1.0 + beatPulse * 0.10;
         pg.push();
         pg.translate(W - 195, LETTERBOX_TOP + 36);
@@ -2679,9 +3130,6 @@ const BrushKit = {
       }
     }
 
-    // =========================================================================
-    // 04 GREEK OLYMPICS: MANGA CUT-IN PANEL (1ST HALF) -> OLYMPIC SATELLITE TV (2ND HALF)
-    // =========================================================================
     else if (era.id === 'era04') {
       if (localProgress < 0.50) {
         const mx = W - 340, my = LETTERBOX_TOP + 12;
@@ -2689,11 +3137,6 @@ const BrushKit = {
         pg.stroke(255, 218, 68, Math.round(245 * seamFade));
         pg.strokeWeight(3.0);
         pg.quad(mx + 18, my, W - 18, my, W - 32, my + 82, mx, my + 82);
-        pg.stroke(255, 142, 58, Math.round(155 * seamFade));
-        pg.strokeWeight(1.5);
-        for (let k = 0; k < 10; k++) {
-          pg.line(mx + 15 + k * 28, my + 4, mx + 160, my + 41);
-        }
         pg.noStroke();
         pg.fill(255, 236, 88, Math.round(250 * seamFade));
         pg.textFont('serif');
@@ -2721,11 +3164,7 @@ const BrushKit = {
       }
     }
 
-    // =========================================================================
-    // 05 HIGH TANG CHANG'AN: NON-OCCLUDING TOP-RIGHT DANMAKU LANE & VLOG STICK
-    // =========================================================================
     else if (era.id === 'era05') {
-      // Strictly keep Danmaku in the upper-right sky band (`x = 460..W-20, y = 104..150`) so it NEVER touches the Top-Left VFX Dock or Character Speech Bubbles!
       const danmakuList = [
         { text: '🎉 榜一大哥【诗仙李太白】送出 西域夜光杯 × 99 ！！', y: LETTERBOX_TOP + 56, col: [255, 228, 92], spd: 145 },
         { text: '抬头看天穹！《盗梦空间》云端折叠长安城与青绿山水绝了！', y: LETTERBOX_TOP + 82, col: [118, 255, 218], spd: 165 },
@@ -2745,7 +3184,6 @@ const BrushKit = {
         }
       });
 
-      // Tang Vlog Selfie Stick attached to the front handlebar
       pg.stroke(188, 124, 52);
       pg.strokeWeight(2.6);
       pg.line(rig.handlebar.x, rig.handlebar.y, rig.handlebar.x + 68, rig.handlebar.y - 54);
@@ -2758,43 +3196,25 @@ const BrushKit = {
       pg.ellipse(rig.handlebar.x + 73, rig.handlebar.y - 61, 5, 5);
     }
 
-    // =========================================================================
-    // 06 NORTHERN SONG: CCTV MECHANICAL X-RAY LOUPE + MOVABLE-TYPE STAMP HUD
-    // =========================================================================
     else if (era.id === 'era06') {
-      const bx = W - 348, by = LETTERBOX_TOP + 12, bw = 330, bh = 68;
+      const bx = W - 348, by = LETTERBOX_TOP + 12, bw = 330, bh = 56;
       pg.fill(22, 30, 28, Math.round(220 * seamFade));
       pg.stroke(168, 224, 198, Math.round(235 * seamFade));
       pg.strokeWeight(2.0);
       pg.rect(bx, by, bw, bh, 6);
-      pg.push();
-      pg.translate(bx + 36, by + 34);
-      pg.rotate(t * 1.6);
-      pg.noFill();
-      pg.stroke(128, 248, 214, Math.round(230 * seamFade));
-      pg.strokeWeight(2.0);
-      pg.ellipse(0, 0, 42, 42);
-      for (let g = 0; g < 8; g++) {
-        const a = (g / 8) * Math.PI * 2;
-        pg.line(Math.cos(a) * 14, Math.sin(a) * 14, Math.cos(a) * 24, Math.sin(a) * 24);
-      }
-      pg.pop();
       pg.noStroke();
       pg.fill(218, 255, 238, Math.round(245 * seamFade));
       pg.textFont('serif');
       pg.textAlign(pg.LEFT, pg.CENTER);
-      pg.textSize(12.0);
-      pg.text('🔬 《大宋科技考》4K 机械微距透视', bx + 72, by + 22);
+      pg.textSize(11.8);
+      pg.text('🔬 《大宋科技考》水运仪象台 & 双曲辕竹木车把', bx + 14, by + 18);
       pg.fill(245, 224, 152, Math.round(240 * seamFade));
-      pg.textSize(11.0);
-      pg.text('苏颂水运仪象台：天衡擒纵每刻击钟 | 毕昇胶泥活字', bx + 72, by + 46);
+      pg.textSize(10.8);
+      pg.text('天衡擒纵每刻击钟 | 红绸流苏黄铜响铃握把已置顶锁定', bx + 14, by + 39);
     }
 
-    // =========================================================================
-    // 07 YUAN-MING-QING: ABACUS HIGH-SPEED COMBO COUNTER + PEKING OPERA GONG HUD
-    // =========================================================================
     else if (era.id === 'era07') {
-      const bx = W - 358, by = LETTERBOX_TOP + 12, bw = 340, bh = 66;
+      const bx = W - 358, by = LETTERBOX_TOP + 12, bw = 340, bh = 56;
       pg.fill(16, 36, 78, Math.round(225 * seamFade));
       pg.stroke(248, 250, 255, Math.round(240 * seamFade));
       pg.strokeWeight(2.2);
@@ -2804,66 +3224,49 @@ const BrushKit = {
       pg.fill(255, 228, 98, Math.round(248 * seamFade));
       pg.textFont('serif');
       pg.textAlign(pg.LEFT, pg.CENTER);
-      pg.textSize(12.5);
-      pg.text('🧮 大明户部珠算连击 COMBO ×' + combo, bx + 14, by + 22);
+      pg.textSize(12.0);
+      pg.text('🧮 大明户部珠算 COMBO ×' + combo + ' | 狼毫前叉×青花瓷把', bx + 14, by + 18);
       pg.fill(228, 242, 255, Math.round(242 * seamFade));
-      pg.textSize(11.2);
-      pg.text(localProgress < 0.48 ? '🎭 梨园木刻境：【急急风】八大山人白眼亮相！' : '🏺 窑变青花境：郑和九桅宝船下西洋航线开启！', bx + 14, by + 46);
+      pg.textSize(10.8);
+      pg.text(localProgress < 0.48 ? '🎭 巨毫洒墨化游虾飞燕与八大山人危石残荷！' : '🏺 窑变青花境：郑和九桅宝船下西洋航线开启！', bx + 14, by + 39);
     }
 
-    // =========================================================================
-    // 08 INCA & NAVIGATION: CAPTAIN'S BRASS SPYGLASS OPTICAL FINDER POV
-    // =========================================================================
     else if (era.id === 'era08') {
-      const lx = W - 145, ly = LETTERBOX_TOP + 92, lr = 62;
-      pg.fill(24, 18, 12, Math.round(215 * seamFade));
+      const lx = W - 135, ly = LETTERBOX_TOP + 86, lr = 56;
+      pg.fill(24, 18, 12, Math.round(210 * seamFade));
       pg.stroke(255, 212, 78, Math.round(245 * seamFade));
-      pg.strokeWeight(3.2);
+      pg.strokeWeight(3.0);
       pg.ellipse(lx, ly, lr * 2, lr * 2);
       pg.strokeWeight(1.2);
       pg.line(lx - lr + 8, ly, lx + lr - 8, ly);
       pg.line(lx, ly - lr + 8, lx, ly + lr - 8);
-      pg.noFill();
-      pg.ellipse(lx, ly, lr * 1.15, lr * 1.15);
       pg.noStroke();
       pg.fill(255, 232, 128, Math.round(245 * seamFade));
       pg.textFont('monospace');
       pg.textAlign(pg.CENTER, pg.CENTER);
-      pg.textSize(10.5);
-      pg.text("🔭 SPYGLASS POV · 13°09'S 72°32'W", lx, ly + lr + 15);
+      pg.textSize(10.0);
+      pg.text("🔭 船舵T型把 × 阵风旗帜物理", lx, ly + lr + 14);
     }
 
-    // =========================================================================
-    // 09 INDUSTRIAL & VAN GOGH SCIENCE: BBC 400X CELLULAR MITOSIS MICROSCOPE PIP
-    // =========================================================================
     else if (era.id === 'era09') {
-      const lx = W - 150, ly = LETTERBOX_TOP + 92, lr = 62;
+      const lx = W - 145, ly = LETTERBOX_TOP + 88, lr = 56;
       pg.fill(12, 28, 36, Math.round(225 * seamFade));
       pg.stroke(98, 255, 192, Math.round(240 * seamFade));
-      pg.strokeWeight(2.8);
+      pg.strokeWeight(2.6);
       pg.ellipse(lx, ly, lr * 2, lr * 2);
-      const sep = 14 + Math.sin(t * 4.5) * 8;
+      const sep = 12 + Math.sin(t * 4.5) * 7;
       pg.fill(72, 248, 178, Math.round(185 * seamFade));
-      pg.stroke(220, 255, 240, Math.round(220 * seamFade));
-      pg.strokeWeight(1.6);
-      pg.ellipse(lx - sep, ly, 32, 28);
-      pg.ellipse(lx + sep, ly, 32, 28);
-      pg.fill(255, 198, 78, Math.round(230 * seamFade));
-      pg.noStroke();
-      pg.ellipse(lx - sep, ly, 10, 10);
-      pg.ellipse(lx + sep, ly, 10, 10);
+      pg.ellipse(lx - sep, ly, 28, 24);
+      pg.ellipse(lx + sep, ly, 28, 24);
       pg.fill(168, 255, 218, Math.round(245 * seamFade));
       pg.textFont('monospace');
       pg.textAlign(pg.CENTER, pg.CENTER);
-      pg.textSize(10.5);
-      pg.text('🔬 400x 细胞分裂 | 2H₂+O₂→2H₂O', lx, ly + lr + 15);
+      pg.textSize(10.0);
+      pg.text('🎨 梵高厚涂流场 × 圣雷米教堂', lx, ly + lr + 14);
     }
 
-    // =========================================================================
-    // 10 FARADAY ELECTROMAGNETIC DAWN: MAXWELL WAVE OSCILLOSCOPE & MORSE DECODER
-    // =========================================================================
     else if (era.id === 'era10') {
-      const bx = W - 358, by = LETTERBOX_TOP + 12, bw = 340, bh = 68;
+      const bx = W - 358, by = LETTERBOX_TOP + 12, bw = 340, bh = 58;
       pg.fill(10, 20, 34, Math.round(225 * seamFade));
       pg.stroke(88, 242, 255, Math.round(245 * seamFade));
       pg.strokeWeight(2.0);
@@ -2872,141 +3275,86 @@ const BrushKit = {
       pg.fill(118, 252, 255, Math.round(248 * seamFade));
       pg.textFont('monospace');
       pg.textAlign(pg.LEFT, pg.CENTER);
-      pg.textSize(11.2);
-      pg.text('⚡ 跨大西洋电报: · · · — — — · · · [1866 ONLINE]', bx + 12, by + 18);
+      pg.textSize(11.0);
+      pg.text('⚡ 紫铜线圈黑胶木双弯把 + 羊角电弧放电球', bx + 12, by + 18);
       pg.stroke(88, 242, 255, Math.round(235 * seamFade));
       pg.strokeWeight(2.0);
       pg.noFill();
       pg.beginShape();
       for (let i = 0; i < 46; i++) {
         const wx = bx + 12 + i * 6.4;
-        const wy = by + 46 + Math.sin(i * 0.45 - t * 18) * 12;
+        const wy = by + 42 + Math.sin(i * 0.45 - t * 18) * 10;
         pg.vertex(wx, wy);
       }
       pg.endShape();
     }
 
-    // =========================================================================
-    // 11..15 ACT III BROADCAST & TELEMETRY HUDS (Auto-Fitted, Zero Overflow!)
-    // =========================================================================
     else if (era.id === 'era11' || era.id === 'era12' || era.id === 'era13' || era.id === 'era14' || era.id === 'era15') {
       const hudMap = {
-        era11: { t1: '⚡ TESLA AC LAB · 1,000,000 VOLTS @ 60Hz', t2: 'NIAGARA FALLS ⇄ BUFFALO & NYC POWER GRID ONLINE', col: [212, 158, 255] },
-        era12: { t1: '🌌 3D GAUSSIAN 4D WORLDLINE · VONNEGUT CENTIPEDE', t2: 'E = mc² · 过去18个历史瞬间同时排列在弯曲四维时空中', col: [118, 242, 255] },
-        era13: { t1: '🏅 OLYMPIC 1000FPS PHOTO-FINISH · 74.8 KM/H', t2: 'CITIUS · ALTIUS · FORTIUS — COMMUNITER (五洲和平)', col: [255, 218, 68] },
-        era14: { t1: '💻 TERMINAL: $ git push origin open-source-world', t2: 'TEKTRONIX 465B OSCILLOSCOPE ➔ TCP/IP & 8-BIT PIXEL', col: [98, 255, 158] },
-        era15: { t1: '🌐 GLOBAL FIBER & HIGH-SPEED RAIL · 5 CONTINENTS', t2: 'ASIA ⇄ EUROPE ⇄ AFRICA ⇄ AMERICAS · ZERO BARRIERS', col: [98, 255, 232] },
+        era11: { t1: '⚡ 82版《西游记》大闹天宫激光 × 顺百万伏特闪电垂直登天', t2: `🎥 运镜: ${cam ? cam.cameraAngleTag : ''} | 白瓷绝缘子横把`, col: [212, 158, 255] },
+        era12: { t1: '🌌 真·16尊凝固3D高斯点云实体雕塑 ×《哈姆雷特》舞台追光', t2: `🎥 运镜: ${cam ? cam.cameraAngleTag : ''} | 多普勒光子弯把`, col: [118, 242, 255] },
+        era13: { t1: '🏅 全球奥运地标群 ×《喜羊羊/猪猪侠》高饱和热血冲刺变形', t2: `🎥 运镜: ${cam ? cam.cameraAngleTag : ''} | 五环碳纤休息把`, col: [255, 218, 68] },
+        era14: { t1: '🍎《伊甸园》智慧苹果树 × 芯片内《红楼梦》刘姥姥逛赛博大观园', t2: `🎥 运镜: ${cam ? cam.cameraAngleTag : ''} | 彩虹排线BMX燕把`, col: [98, 255, 158] },
+        era15: { t1: '💧 复兴号跨海高铁 ×《三体》二维智子展开·水滴伴飞·古筝行动', t2: `🎥 运镜: ${cam ? cam.cameraAngleTag : ''} | 钛合金蝴蝶导航把`, col: [98, 255, 232] },
       };
       const hm = hudMap[era.id];
-      pg.textFont('monospace');
-      pg.textSize(11.2);
-      const w1 = pg.textWidth(hm.t1);
       pg.textFont('serif');
-      pg.textSize(11.0);
+      pg.textSize(11.4);
+      const w1 = pg.textWidth(hm.t1);
+      pg.textSize(10.5);
       const w2 = pg.textWidth(hm.t2);
-      const bw = Math.max(335, Math.max(w1, w2) + 28);
-      const bx = W - bw - 18, by = LETTERBOX_TOP + 12, bh = 58;
-      pg.fill(10, 18, 32, Math.round(225 * seamFade));
-      pg.stroke(hm.col[0], hm.col[1], hm.col[2], Math.round(240 * seamFade));
-      pg.strokeWeight(2.0);
+      const bw = Math.max(350, Math.max(w1, w2) + 28);
+      const bx = W - bw - 18, by = LETTERBOX_TOP + 10, bh = 52;
+      pg.fill(10, 18, 32, Math.round(218 * seamFade));
+      pg.stroke(hm.col[0], hm.col[1], hm.col[2], Math.round(235 * seamFade));
+      pg.strokeWeight(1.8);
       pg.rect(bx, by, bw, bh, 6);
       pg.noStroke();
       pg.fill(hm.col[0], hm.col[1], hm.col[2], Math.round(248 * seamFade));
-      pg.textFont('monospace');
       pg.textAlign(pg.LEFT, pg.CENTER);
-      pg.textSize(11.2);
-      pg.text(hm.t1, bx + 12, by + 18);
+      pg.textSize(11.4);
+      pg.text(hm.t1, bx + 12, by + 17);
       pg.fill(242, 248, 255, Math.round(242 * seamFade));
-      pg.textFont('serif');
-      pg.textSize(11.0);
-      pg.text(hm.t2, bx + 12, by + 40);
-    }
-
-    // =========================================================================
-    // UNIVERSAL DIRECTOR CLOSE-UP CUT-IN LOUPE & ANAMORPHIC LENS FLARE (每一幕专属微距特写切镜，消除视觉疲劳！)
-    // =========================================================================
-    if (localProgress > 0.24 && localProgress < 0.78 && era.id !== 'era02') {
-      const pipFade = Math.sin(((localProgress - 0.24) / 0.54) * Math.PI) * seamFade;
-      if (pipFade > 0.08) {
-        const pa = Math.round(225 * pipFade);
-        // Anamorphic Cinema Horizontal Lens Flare Streak across upper lens
-        pg.noStroke();
-        pg.fill(128, 224, 255, Math.round(38 * pipFade * (0.6 + 0.4 * beatPulse)));
-        pg.ellipse(rig.head.x + 20, rig.head.y - 35, 340, 8);
-
-        // Bottom-Right Director Close-Up Cut-In Frame (`x = W - 245, y = H - LETTERBOX_BOTTOM - 108`)
-        const px = W - 252, py = H - LETTERBOX_BOTTOM - 104, pw = 234, ph = 64;
-        pg.fill(12, 16, 24, pa);
-        pg.stroke(255, 218, 92, pa);
-        pg.strokeWeight(1.8);
-        pg.rect(px, py, pw, ph, 6);
-        // Animated Close-Up Reticle & Macro Waveform inside PIP
-        pg.noFill();
-        pg.stroke(98, 248, 218, pa);
-        pg.strokeWeight(1.6);
-        pg.ellipse(px + 32, py + 32, 38 + beatPulse * 6, 38 + beatPulse * 6);
-        pg.line(px + 12, py + 32, px + 52, py + 32);
-        pg.line(px + 32, py + 12, px + 32, py + 52);
-
-        const closeupTitles = {
-          intro: ['🎥 85mm 微距特写', '黄金比例擒纵轮咬合'],
-          era01: ['🎥 200mm 长焦特写', '雄狮声带震动与金贝鼓'],
-          era03: ['🎥 微距金石特写', '司母戊鼎错金雷纹与卜辞'],
-          era04: ['🎥 漫画分镜特写', '斯巴达猫火炬与飞马轮'],
-          era05: ['🎥 敦煌飞天特写', '波斯猫四弦曲颈琵琶轮指'],
-          era06: ['🎥 清明上河特写', '虹桥船夫降桅 & 活字印轮'],
-          era07: ['🎥 泼墨微距特写', '巨毫洒墨成游虾与青花胎'],
-          era08: ['🎥 航海星盘特写', '圣玛利亚号红十字帆与六分仪'],
-          era09: ['🎥 油画刮刀特写', '星辰黄铜齿轮与蒸汽颜料管'],
-          era10: ['🎥 高压电弧特写', '马蹄磁铁车架与海底脉冲'],
-          era11: ['🎥 百万伏特特写', '法拉第铜笼猫与球形闪电轮'],
-          era12: ['🎥 四维时空特写', '3D高斯点云千足虫世界线'],
-          era13: ['🎥 1000fps 升格特写', '五环碳纤维碟轮冲刺撞线'],
-          era14: ['🎥 芯片微距特写', '绿色PCB主板车架与软盘轮'],
-          era15: ['🎥 全息极光特写', '五大洲开源光纤地球仪'],
-        };
-        const ct = closeupTitles[era.id] || ['🎥 导演微距特写', '时代核心机械与笔触'];
-        pg.noStroke();
-        pg.fill(255, 224, 108, pa);
-        pg.textFont('monospace');
-        pg.textAlign(pg.LEFT, pg.CENTER);
-        pg.textSize(10.8);
-        pg.text(ct[0], px + 62, py + 21);
-        pg.fill(218, 246, 255, pa);
-        pg.textFont('serif');
-        pg.textSize(11.2);
-        pg.text(ct[1], px + 62, py + 43);
-      }
+      pg.textSize(10.5);
+      pg.text(hm.t2, bx + 12, by + 37);
     }
 
     pg.pop();
   },
 
   /**
-   * COLLISION-FREE DIRECTOR VFX & OBJECT INSPECTOR DOCK (`drawDirectorVFXCallouts`)
-   * - Docks both the 3 VFX items AND the active `【这是：...】` Object Explanation inside the unified Top-Left HUD Card (`x=18..436, y=60..192`)!
-   * - Places a clean, non-occluding Target Reticle (`◎ [①]`) directly on the target object in the scene, with a subtle dotted pointer line ONLY when the target is in the left/upper zone, so it NEVER crosses over the Pelican's speech bubble or blocks right-side elements!
+   * ============================================================================
+   * V6.0 AUTO-FADING EVENT TOAST HUD (`HUDToastContract`)
+   * ============================================================================
+   * - Replaces the permanent multi-row top-left box that occluded Era 08!
+   * - Fades in over 0.4s when a VFX event triggers, holds for 1.8s, and fades out
+   *   over 0.6s to `alpha = 0` (completely invisible when not needed!).
+   * - Dynamically measures text width so 100% of text stays cleanly inside the toast!
    */
   drawDirectorVFXCallouts(pg, state, rig, W, H, showVFX = true) {
     if (!showVFX) return;
-    const { era, localProgress, t, beatPulse } = state;
+    const { era, t, beatPulse, cam } = state;
     const notes = era.vfxNotes || [];
     if (!notes.length) return;
 
+    const toastAlpha = typeof state.toastAlpha === 'number' ? state.toastAlpha : 0.0;
+    if (toastAlpha <= 0.02) return; // Completely invisible when faded out!
+
+    const activeIdx = state.activeNoteIdx || 0;
+    const activeNote = notes[activeIdx] || notes[0];
+    const alphaInt = Math.round(238 * toastAlpha);
+
     pg.push();
 
-    const activeIdx = Math.min(notes.length - 1, Math.floor(localProgress * notes.length));
-    const activeNote = notes[activeIdx];
-
-    // Compute exact target coordinates for the glowing Target Reticle (`◎`)
+    // Compute target coordinates for the glowing Target Reticle (`◎`)
     let tx = rig.centerX;
     let ty = rig.groundY - 120;
     if (activeNote.target === 'sky_wheel') {
       tx = rig.centerX + 85;
       ty = rig.groundY - 215;
     } else if (activeNote.target === 'crank') {
-      tx = rig.bb.x;
-      ty = rig.bb.y;
+      tx = rig.handlebar.x;
+      ty = rig.handlebar.y;
     } else if (activeNote.target === 'cat') {
       tx = rig.catSeat.x;
       ty = rig.catSeat.y - 24;
@@ -3035,93 +3383,41 @@ const BrushKit = {
       ty = 455;
     }
 
-    // 1. Unified Top-Left Director VFX & Object-ID Dock (`x=18..434, y=60..192`) — ZERO collision with center or right-side elements!
+    // Dynamic Auto-Fitted Toast Width (Zero text overflow!)
+    const line1 = `✨ 触发特效 [${activeIdx + 1}/${notes.length}] ${activeNote.tag}：${activeNote.desc}`;
+    const line2 = `🎯 ${activeNote.objName || ''} · ${cam && cam.cameraAngleTag ? cam.cameraAngleTag : ''}`;
+    pg.textFont('serif');
+    pg.textSize(11.5);
+    const w1 = pg.textWidth(line1);
+    pg.textSize(10.8);
+    const w2 = pg.textWidth(line2);
+    const pw = Math.min(540, Math.max(320, Math.max(w1, w2) + 28));
+    const ph = 52;
     const px = 18;
-    const py = LETTERBOX_TOP + 8;
-    const pw = 416;
-    const ph = 132;
+    const slideY = (1.0 - toastAlpha) * -10;
+    const py = LETTERBOX_TOP + 10 + slideY;
 
-    pg.fill(10, 14, 22, 222);
-    pg.stroke(232, 188, 96, 220);
+    pg.fill(10, 14, 22, Math.round(212 * toastAlpha));
+    pg.stroke(232, 188, 96, alphaInt);
     pg.strokeWeight(1.6);
     pg.rect(px, py, pw, ph, 8);
 
-    pg.fill(232, 188, 96, 42);
     pg.noStroke();
-    pg.rect(px + 2, py + 2, pw - 4, 22, 6);
-    pg.fill(255, 222, 128);
-    pg.textFont('monospace');
+    pg.fill(112, 255, 212, alphaInt);
     pg.textAlign(pg.LEFT, pg.CENTER);
     pg.textSize(11.4);
-    pg.text(`✨ 跨次元画境与特效导览 [SHADER #${String(era.shader).padStart(2, '0')} · 零遮挡分层]`, px + 10, py + 13);
+    pg.text(line1, px + 12, py + 17);
 
-    notes.forEach((n, idx) => {
-      const iy = py + 33 + idx * 19;
-      const isAct = idx === activeIdx;
-      if (isAct) {
-        pg.fill(238, 188, 82, 52);
-        pg.noStroke();
-        pg.rect(px + 6, iy - 8, pw - 12, 17, 4);
-      }
-      pg.fill(isAct ? [112, 255, 212] : [215, 198, 162]);
-      pg.textFont('serif');
-      pg.textAlign(pg.LEFT, pg.CENTER);
-      pg.textSize(11.5);
-      pg.text(`${isAct ? '▶ ' : '• '}${n.tag}：${n.desc}`, px + 10, iy);
-    });
+    pg.fill(255, 228, 118, alphaInt);
+    pg.textSize(10.6);
+    pg.text(line2, px + 12, py + 37);
 
-    // Bottom section of the Dock: Explicit Object Identification (`【这是：...】`)
-    pg.stroke(232, 188, 96, 95);
-    pg.strokeWeight(1);
-    pg.line(px + 10, py + 86, px + pw - 10, py + 86);
-    pg.noStroke();
-    pg.fill(255, 228, 118);
-    pg.textFont('serif');
-    pg.textAlign(pg.LEFT, pg.CENTER);
-    pg.textSize(12.0);
-    pg.text(`🎯 准星当前锁定 ${activeNote.objName || ''}`, px + 10, py + 100);
-    pg.fill(192, 240, 228);
-    pg.textSize(10.8);
-    pg.text(activeNote.objSub || '', px + 10, py + 118);
-
-    // 2. Animated Target Reticle (`◎`) on the Scene Object + Compact Numbered Pill Badge (automatically avoids `rig.activeBubbleRect`!)
+    // Subtle Target Reticle (`◎`) that also fades out with `toastAlpha`
     const rPulse = 12 + beatPulse * 5 + Math.sin(t * 8) * 2;
     pg.noFill();
-    pg.stroke(112, 255, 212, 235);
-    pg.strokeWeight(2.2);
+    pg.stroke(112, 255, 212, alphaInt);
+    pg.strokeWeight(2.0);
     pg.ellipse(tx, ty, rPulse * 2, rPulse * 2);
-    pg.stroke(255, 222, 108, 220);
-    pg.strokeWeight(1.4);
-    pg.line(tx - rPulse - 5, ty, tx + rPulse + 5, ty);
-    pg.line(tx, ty - rPulse - 5, tx, ty + rPulse + 5);
-
-    // Short non-crossing leader line only if target is near the top-left dock (`tx < 560`)
-    if (tx < 560) {
-      pg.stroke(112, 255, 212, 145);
-      pg.strokeWeight(1.4);
-      pg.line(px + pw * 0.65, py + ph, tx, ty - rPulse);
-    }
-
-    // Compact floating pill right next to the reticle, shifted outside `rig.activeBubbleRect` if needed
-    let pillX = tx + rPulse + 8;
-    let pillY = ty - 11;
-    const br = rig.activeBubbleRect;
-    if (br && pillX < br.x2 && pillX + 135 > br.x1 && pillY < br.y2 && pillY + 22 > br.y1) {
-      pillY = br.y2 + 6;
-    }
-    pillX = Math.max(20, Math.min(W - 155, pillX));
-    pillY = Math.max(LETTERBOX_TOP + 14, Math.min(H - LETTERBOX_BOTTOM - 32, pillY));
-
-    pg.fill(12, 18, 26, 225);
-    pg.stroke(112, 255, 212, 220);
-    pg.strokeWeight(1.4);
-    pg.rect(pillX, pillY, 138, 20, 10);
-    pg.noStroke();
-    pg.fill(255, 232, 128);
-    pg.textFont('serif');
-    pg.textAlign(pg.CENTER, pg.CENTER);
-    pg.textSize(10.8);
-    pg.text(`🎯 锁定目标 #0${activeIdx + 1}`, pillX + 69, pillY + 10);
 
     pg.pop();
   },
@@ -3142,7 +3438,7 @@ const BrushKit = {
     pg.textAlign(pg.LEFT, pg.CENTER);
     pg.textFont('serif');
     pg.textStyle(pg.BOLD);
-    pg.textSize(17.5);
+    pg.textSize(17.0);
     pg.text(era.title, 20, 25);
 
     const mins = Math.floor(state.t / 60);
@@ -3190,234 +3486,427 @@ const BrushKit = {
     pg.pop();
   },
 
+  /**
+   * ============================================================================
+   * V6.0 UNIVERSAL CREATIVE TIME PORTALS (`Universal Creative Time Portals`, 01 ➔ 15)
+   * ============================================================================
+   * Replaces 100% of old vertical pillars with 15 unique, surreal, era-specific
+   * metamorphosis portals across `intro ➔ era15`!
+   */
   drawForegroundOcclusionWipe(pg, state, W, H) {
     const sx = state.seamScreenX;
-    if (sx < -160 || sx > W + 160 || state.leftEra.id === state.rightEra.id) return;
+    if (sx < -180 || sx > W + 180 || state.leftEra.id === state.rightEra.id) return;
 
     pg.push();
-    const leftId = state.leftEra.id;
     const rightId = state.rightEra.id;
-    const roadY = getRoadY(state.seamWorldX, H);
+    const t = state.t;
+    const midY = H * 0.5;
+    const topY = LETTERBOX_TOP;
+    const botY = H - LETTERBOX_BOTTOM;
+    const spanH = botY - topY;
 
-    if (leftId === 'intro' && rightId === 'era01') {
+    // -------------------------------------------------------------------------
+    // PORTAL 01 (`00 ➔ 01`, 10s): 达·芬奇黄金圆规自燃火环门
+    // -------------------------------------------------------------------------
+    if (rightId === 'era01') {
       pg.noFill();
-      pg.stroke(248, 214, 128, 235);
-      pg.strokeWeight(2.5);
       for (let r = 0; r < 5; r++) {
-        pg.arc(sx, roadY - 95, 140 + r * 28, 260 + r * 28, Math.PI * 0.65, Math.PI * 1.45);
+        pg.stroke(255, 198 - r * 28, 58, 240 - r * 30);
+        pg.strokeWeight(5.0 - r * 0.7);
+        pg.ellipse(sx, midY, 120 + r * 36, spanH * (0.72 + r * 0.07));
       }
-      pg.fill(138, 78, 38);
-      pg.stroke(38, 20, 10);
-      pg.strokeWeight(3);
-      pg.quad(sx - 28, roadY, sx + 42, roadY, sx + 32, LETTERBOX_TOP, sx - 18, LETTERBOX_TOP);
-
-      pg.fill(255, 168, 42, 240);
+      // Rotating Brass Dividers / Compass Legs drawing the burning Vitruvian fire ring
+      const compAng = t * 2.4;
+      pg.stroke(248, 214, 118);
+      pg.strokeWeight(6.5);
+      pg.line(sx, topY + 28, sx + Math.cos(compAng) * 68, midY + Math.sin(compAng) * 140);
+      pg.line(sx, topY + 28, sx - Math.cos(compAng) * 68, midY - Math.sin(compAng) * 140);
+      // Burning parchment embers morphing into East African campfire sparks
       pg.noStroke();
-      pg.triangle(sx - 26, roadY - 165, sx + 6, roadY - 245 - state.beatPulse * 18, sx + 34, roadY - 165);
-      pg.fill(255, 238, 138, 245);
-      pg.triangle(sx - 12, roadY - 165, sx + 6, roadY - 215, sx + 22, roadY - 165);
-      pg.pop();
-      return;
+      for (let e = 0; e < 18; e++) {
+        const ey = topY + ((e * 37 + t * 140) % spanH);
+        const ex = sx + Math.sin(ey * 0.05 + t * 8 + e) * 48;
+        pg.fill(e % 2 === 0 ? [255, 148, 38, 245] : [255, 232, 88, 245]);
+        pg.ellipse(ex, ey, 14, 9);
+      }
     }
 
-    pg.noStroke();
-    pg.fill(0, 0, 0, 95);
-    pg.rect(sx - 52, LETTERBOX_TOP, 104, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-
-    if (rightId === 'era02') {
-      pg.fill(78, 48, 24);
-      pg.stroke(228, 184, 108);
-      pg.strokeWeight(3);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      for (let y = LETTERBOX_TOP + 20; y < H - LETTERBOX_BOTTOM; y += 48) {
-        pg.noFill();
-        pg.stroke(212, 198, 168);
-        pg.strokeWeight(5);
-        pg.ellipse(sx, y, 28, 40);
-      }
-    } else if (rightId === 'era03') {
-      pg.fill(42, 68, 58);
-      pg.stroke(218, 184, 96);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      for (let y = LETTERBOX_TOP + 40; y < H - LETTERBOX_BOTTOM - 40; y += 90) {
-        pg.fill(198, 72, 48);
-        pg.rect(sx - 24, y, 48, 36, 4);
-        pg.fill(242, 208, 112);
-        pg.ellipse(sx - 10, y + 18, 8, 8);
-        pg.ellipse(sx + 10, y + 18, 8, 8);
-      }
-    } else if (rightId === 'era04') {
-      pg.fill(242, 236, 224);
-      pg.stroke(168, 152, 128);
-      pg.strokeWeight(2.5);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      for (let f = -24; f <= 24; f += 12) {
-        pg.line(sx + f, LETTERBOX_TOP, sx + f, H - LETTERBOX_BOTTOM);
-      }
-    } else if (rightId === 'era05') {
-      pg.fill(178, 38, 28);
-      pg.stroke(245, 202, 88);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      pg.noFill();
-      pg.strokeWeight(4);
+    // -------------------------------------------------------------------------
+    // PORTAL 02 (`01 ➔ 02`, 22s): 狮吼震碎岩壁 · 百米海啸水幕门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era02') {
+      // Shattering ochre rock boulders on left + 100m Mesopotamian tsunami wall crashing down!
+      pg.fill(18, 68, 128, 235);
+      pg.stroke(218, 246, 255);
+      pg.strokeWeight(3.5);
       pg.beginShape();
-      for (let y = LETTERBOX_TOP; y <= H - LETTERBOX_BOTTOM; y += 24) {
-        pg.vertex(sx + Math.sin(y * 0.04 + state.t * 4) * 26, y);
+      pg.vertex(sx - 24, topY);
+      for (let y = topY; y <= botY; y += 28) {
+        const curl = Math.sin(y * 0.035 - t * 9) * 38;
+        pg.vertex(sx + 36 + curl, y);
+      }
+      pg.vertex(sx - 24, botY);
+      pg.endShape(pg.CLOSE);
+      // Shattered ochre rock fragments flying outward from the lion's sonic boom
+      for (let k = 0; k < 10; k++) {
+        const ry = topY + 36 + k * 58;
+        const rx = sx - 18 + Math.sin(t * 12 + k) * 26;
+        pg.fill(138, 72, 34);
+        pg.stroke(255, 212, 88);
+        pg.strokeWeight(2.0);
+        pg.quad(rx - 18, ry - 14, rx + 16, ry - 18, rx + 22, ry + 12, rx - 14, ry + 16);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 03 (`02 ➔ 03`, 34s): 彩虹化 1200°C 沸腾铜水 · 万年龟甲炸裂兆纹门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era03') {
+      // Giant Shang Oracle Tortoise Plastron splitting open with glowing cyan "卜" cracks & molten 1200°C bronze stream!
+      pg.fill(52, 38, 24, 245);
+      pg.stroke(245, 198, 82);
+      pg.strokeWeight(3.2);
+      pg.ellipse(sx, midY, 118, spanH * 0.92);
+      // Molten 1200°C Golden-Red Bronze pouring down the center crack
+      pg.stroke(255, 128, 32);
+      pg.strokeWeight(12.0);
+      pg.line(sx, topY, sx, botY);
+      pg.stroke(255, 238, 98);
+      pg.strokeWeight(5.0);
+      pg.line(sx, topY, sx, botY);
+      // Glowing Cyan "卜"-Shaped Oracle Bone Crack Lines branching left & right
+      pg.stroke(98, 255, 218);
+      pg.strokeWeight(3.4);
+      for (let c = 0; c < 7; c++) {
+        const cy = topY + 65 + c * 74;
+        const dir = c % 2 === 0 ? 1 : -1;
+        pg.line(sx, cy, sx + dir * 46, cy - 22);
+        pg.line(sx + dir * 24, cy - 11, sx + dir * 48, cy + 12);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 04 (`03 ➔ 04`, 46s): 青铜饕餮巨口吞噬 · 宙斯雷霆劈石门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era04') {
+      // Giant Bronze Taotie Beast Mask Jaws at top & bottom + Zeus Golden Lightning Bolt splitting the seam!
+      pg.fill(38, 96, 82, 245);
+      pg.stroke(242, 204, 98);
+      pg.strokeWeight(3.0);
+      pg.rect(sx - 64, topY, 128, 95, 8);
+      pg.rect(sx - 64, botY - 95, 128, 95, 8);
+      // Glowing Taotie eyes & fangs
+      pg.fill(98, 255, 218);
+      pg.ellipse(sx - 28, topY + 42, 22, 22);
+      pg.ellipse(sx + 28, topY + 42, 22, 22);
+      pg.fill(255, 248, 220);
+      for (let f = -48; f <= 48; f += 24) {
+        pg.triangle(sx + f - 8, topY + 95, sx + f + 8, topY + 95, sx + f, topY + 128);
+        pg.triangle(sx + f - 8, botY - 95, sx + f + 8, botY - 95, sx + f, botY - 128);
+      }
+      // Zeus Golden Thunderbolt cleaving through the center
+      pg.noFill();
+      pg.stroke(255, 232, 68);
+      pg.strokeWeight(8.5);
+      pg.beginShape();
+      for (let y = topY; y <= botY; y += 36) {
+        pg.vertex(sx + ((y / 36) % 2 === 0 ? -28 : 28), y);
       }
       pg.endShape();
-    } else if (rightId === 'era06') {
-      // Song Dynasty Cyan-Bamboo & Xuan-Scroll Pillar Wipe
-      pg.fill(118, 152, 104);
-      pg.stroke(42, 58, 38);
-      pg.strokeWeight(3);
-      pg.rect(sx - 34, LETTERBOX_TOP, 68, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      for (let y = LETTERBOX_TOP + 60; y < H - LETTERBOX_BOTTOM; y += 85) {
-        pg.line(sx - 34, y, sx + 34, y);
-      }
-    } else if (rightId === 'era07') {
-      // Ming Blue-and-White Porcelain Pillar Wipe
-      pg.fill(246, 250, 255);
-      pg.stroke(24, 68, 162);
-      pg.strokeWeight(3);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      pg.noFill();
-      for (let y = LETTERBOX_TOP + 45; y < H - LETTERBOX_BOTTOM - 40; y += 75) {
-        pg.ellipse(sx, y, 36, 36);
-      }
-    } else if (rightId === 'era08') {
-      // Age of Sail Caravel Mast & Inca Gold Sun Pillar Wipe
-      pg.fill(118, 72, 34);
-      pg.stroke(255, 212, 68);
-      pg.strokeWeight(3);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      pg.fill(255, 212, 68);
-      pg.ellipse(sx, H * 0.5, 48, 48);
-    } else if (rightId === 'era09') {
-      // Victorian Riveted Brass Steam-Pipe & Piston Pillar Wipe
-      pg.fill(148, 96, 44);
-      pg.stroke(255, 218, 88);
-      pg.strokeWeight(3);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      for (let y = LETTERBOX_TOP + 36; y < H - LETTERBOX_BOTTOM; y += 48) {
-        pg.fill(255, 218, 88);
-        pg.ellipse(sx - 22, y, 7, 7);
-        pg.ellipse(sx + 22, y, 7, 7);
-      }
-    } else if (rightId === 'era10') {
-      // Faraday Copper Solenoid Coil & Cyan Plasma Pillar Wipe
-      pg.fill(22, 36, 54);
-      pg.stroke(88, 242, 255);
-      pg.strokeWeight(3);
-      pg.rect(sx - 36, LETTERBOX_TOP, 72, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-      pg.noFill();
-      pg.stroke(238, 138, 64);
-      pg.strokeWeight(4);
-      for (let y = LETTERBOX_TOP + 24; y < H - LETTERBOX_BOTTOM - 20; y += 28) {
-        pg.arc(sx, y, 64, 20, 0, Math.PI);
-      }
-    } else if (rightId === 'era11') {
-      pg.fill(38, 24, 82);
-      pg.stroke(212, 148, 255);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-    } else if (rightId === 'era12') {
-      pg.fill(18, 32, 64);
-      pg.stroke(118, 242, 255);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-    } else if (rightId === 'era13') {
-      pg.fill(242, 248, 255);
-      pg.stroke(28, 118, 218);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-    } else if (rightId === 'era14') {
-      pg.fill(12, 42, 24);
-      pg.stroke(98, 255, 158);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
-    } else if (rightId === 'era15') {
-      pg.fill(16, 54, 78);
-      pg.stroke(98, 255, 232);
-      pg.strokeWeight(3);
-      pg.rect(sx - 38, LETTERBOX_TOP, 76, H - LETTERBOX_TOP - LETTERBOX_BOTTOM);
     }
 
-    // =========================================================================
-    // EMBEDDED VERTICAL PILLAR INSCRIPTION PLAQUE (严格内嵌在 76px 门柱中央的 56px 竖向碑铭匾额，绝不横向挤出门柱半个像素！)
-    // =========================================================================
-    const pillarTablets = {
-      era02: { badge: 'ARK',  from: '岩画', toRows: ['诺', '亚', '方', '舟'], sub: 'תֵּבָה', bg: [38, 24, 14], fg: [255, 224, 118] },
-      era03: { badge: '商',   from: '方舟', toRows: ['殷', '商', '朝', '歌'], sub: '卜辞',   bg: [20, 48, 40], fg: [118, 248, 212] },
-      era04: { badge: '776',  from: '殷商', toRows: ['Ο', 'Λ', 'Υ', 'Μ'],     sub: 'ΝΙΚΗ',  bg: [148, 48, 28], fg: [255, 236, 148] },
-      era05: { badge: '唐',   from: '雅典', toRows: ['盛', '唐', '长', '安'], sub: '750',    bg: [148, 28, 22], fg: [255, 218, 98] },
-      era06: { badge: '宋',   from: '盛唐', toRows: ['清', '明', '上', '河'], sub: '汴京',   bg: [42, 66, 58], fg: [218, 246, 228] },
-      era07: { badge: '明',   from: '北宋', toRows: ['泼', '墨', '青', '花'], sub: '朱耷',   bg: [16, 48, 128], fg: [248, 252, 255] },
-      era08: { badge: '1492', from: '宝船', toRows: ['I', 'N', 'T', 'I'],     sub: 'NAVIS',  bg: [98, 54, 14], fg: [255, 218, 78] },
-      era09: { badge: '1889', from: '航海', toRows: ['星', '月', '夜', '旋'], sub: 'ART',    bg: [18, 36, 82], fg: [255, 228, 72] },
-      era10: { badge: 'E⊥B',  from: '星月', toRows: ['麦', '克', '斯', '韦'], sub: '1873',   bg: [12, 28, 48], fg: [112, 252, 255] },
-      era11: { badge: 'AC',   from: '电报', toRows: ['特', '斯', '拉', '塔'], sub: '1895',   bg: [36, 20, 78], fg: [218, 168, 255] },
-      era12: { badge: '4D',   from: '雷电', toRows: ['时', '间', '千', '足'], sub: 'E=mc²',  bg: [14, 28, 58], fg: [255, 228, 108] },
-      era13: { badge: '五环', from: '时空', toRows: ['现', '代', '奥', '运'], sub: 'PEACE',  bg: [20, 88, 168], fg: [255, 238, 118] },
-      era14: { badge: 'CPU',  from: '奥运', toRows: ['硅', '谷', '开', '源'], sub: '8-BIT',  bg: [10, 38, 22], fg: [98, 255, 158] },
-      era15: { badge: '5G/0', from: '硅谷', toRows: ['五', '洲', '互', '联'], sub: 'GLOBE',  bg: [14, 52, 74], fg: [118, 255, 232] },
+    // -------------------------------------------------------------------------
+    // PORTAL 05 (`04 ➔ 05`, 58s): 古希腊破空铁饼 · 敦煌飞天五彩绫罗漩涡门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era05') {
+      // Spinning Bronze Discus at center unwinding into 5-Color Dunhuang Feitian Silk Ribbons & Peach Blossom Vortex!
+      const ribbonCols = [[238, 58, 48], [255, 208, 68], [58, 198, 152], [78, 168, 248], [238, 118, 198]];
+      pg.noFill();
+      ribbonCols.forEach((rc, idx) => {
+        pg.stroke(rc[0], rc[1], rc[2], 235);
+        pg.strokeWeight(8.0);
+        pg.beginShape();
+        for (let y = topY; y <= botY; y += 24) {
+          const wave = Math.sin(y * 0.032 - t * 7 + idx * 1.2) * (48 + idx * 6);
+          pg.vertex(sx + wave, y);
+        }
+        pg.endShape();
+      });
+      // Spinning Greek Bronze Discus morphing into Tang Taiji Lotus at center
+      pg.push();
+      pg.translate(sx, midY);
+      pg.rotate(t * 6.0);
+      pg.fill(218, 158, 58);
+      pg.stroke(255, 238, 128);
+      pg.strokeWeight(3.0);
+      pg.ellipse(0, 0, 92, 92);
+      pg.stroke(188, 38, 32);
+      pg.ellipse(0, 0, 56, 56);
+      pg.pop();
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 06 (`05 ➔ 06`, 70s): 长安牡丹花雨 · 毕昇三千活字翻转魔方门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era06') {
+      // 3D Flipping Matrix of Bi Sheng Clay Movable-Type Blocks & Peony Petals ("毕昇三千活字翻转魔方墙")!
+      const chars = ['清', '明', '上', '河', '汴', '京', '活', '字', '苏', '轼', '天', '衡'];
+      let cIdx = 0;
+      for (let y = topY + 26; y <= botY - 26; y += 52) {
+        for (let col = -1; col <= 1; col++) {
+          const flip = Math.cos(t * 5.5 + y * 0.04 + col);
+          const bx = sx + col * 34;
+          const bw = Math.max(8, Math.abs(flip) * 30);
+          pg.fill(flip > 0 ? [198, 148, 92] : [218, 52, 68]);
+          pg.stroke(42, 32, 22);
+          pg.strokeWeight(2.0);
+          pg.rect(bx - bw * 0.5, y - 22, bw, 44, 4);
+          if (bw > 16) {
+            pg.noStroke();
+            pg.fill(255, 242, 198);
+            pg.textFont('serif');
+            pg.textAlign(pg.CENTER, pg.CENTER);
+            pg.textSize(15);
+            pg.text(chars[cIdx % chars.length], bx, y);
+          }
+          cIdx++;
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 07 (`06 ➔ 07`, 82s): 巨毫浓墨一笔横扫门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era07') {
+      // Colossal Wolf-Hair Calligraphy Brush sweeping thick Bada Shanren ink & Cobalt glaze down the seam!
+      const brushY = topY + 95 + Math.sin(t * 4.5) * 65;
+      // Thick flying-white ink stroke trail covering full vertical seam
+      for (let s = -24; s <= 24; s += 8) {
+        pg.stroke(s > 0 ? [22, 68, 168, 225] : [22, 26, 32, 235]);
+        pg.strokeWeight(12);
+        pg.line(sx + s + Math.sin(t * 5 + s) * 12, topY, sx + s - Math.cos(t * 5 + s) * 12, botY);
+      }
+      // Giant Bamboo & Blue-and-White Porcelain Brush Handle + Wolf-Hair Bristle Tip
+      pg.fill(168, 118, 58);
+      pg.stroke(32, 22, 14);
+      pg.strokeWeight(2.8);
+      pg.rect(sx - 18, topY - 10, 36, brushY - topY, 4);
+      pg.fill(245, 248, 255);
+      pg.stroke(22, 68, 168);
+      pg.rect(sx - 22, brushY - 24, 44, 24, 3);
+      pg.fill(18, 22, 28);
+      pg.triangle(sx - 28, brushY, sx + 28, brushY, sx + Math.sin(t * 8) * 16, brushY + 96);
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 08 (`07 ➔ 08`, 94s): 青花瓷浪破壁化大西洋惊涛门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era08') {
+      // Jingdezhen Cobalt Blue-and-White Porcelain Waves shattering ceramic shards into real Atlantic storm waves!
+      for (let y = topY + 30; y <= botY; y += 54) {
+        const waveX = sx + Math.sin(y * 0.04 - t * 6) * 24;
+        // Cracked white porcelain shards + surging cobalt-gold Atlantic wave crests
+        pg.fill(248, 252, 255);
+        pg.stroke(22, 68, 168);
+        pg.strokeWeight(3.0);
+        pg.arc(waveX, y, 92, 64, 0, Math.PI * 1.35);
+        pg.fill(22, 82, 168);
+        pg.stroke(255, 218, 78);
+        pg.arc(waveX + 14, y - 8, 68, 48, Math.PI * 0.8, Math.PI * 1.9);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 09 (`08 ➔ 09`, 106s): 船长黄铜单筒望远镜钻镜门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era09') {
+      // Captain's Brass Spyglass Barrel & Rotating Optical Iris morphing into Van Gogh Starry Night Clockwork Gears!
+      pg.stroke(168, 112, 38);
+      pg.strokeWeight(18);
+      pg.line(sx, topY, sx, botY);
+      pg.push();
+      pg.translate(sx, midY);
+      pg.fill(18, 36, 78, 240);
+      pg.stroke(255, 214, 68);
+      pg.strokeWeight(6.5);
+      pg.ellipse(0, 0, 148, 148);
+      pg.rotate(t * 2.5);
+      for (let g = 0; g < 12; g++) {
+        const a = (g / 12) * Math.PI * 2;
+        pg.stroke(g % 2 === 0 ? [255, 224, 68] : [78, 162, 255]);
+        pg.strokeWeight(4.5);
+        pg.line(Math.cos(a) * 32, Math.sin(a) * 32, Math.cos(a) * 72, Math.sin(a) * 72);
+      }
+      pg.pop();
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 10 (`09 ➔ 10`, 118s): 蒸汽火车迎面撞镜 · 法拉第电弧爆裂门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era10') {
+      // Head-on Victorian Steam Locomotive Boiler & Brass Headlamp exploding with Faraday Cyan Electromagnetic Lightning!
+      pg.push();
+      pg.translate(sx, midY + 24);
+      // Smokestack & Iron Boiler Front Plate charging head-on at the lens
+      pg.fill(28, 38, 58);
+      pg.stroke(255, 214, 68);
+      pg.strokeWeight(3.5);
+      pg.rect(-18, -135, 36, 56, 3);
+      pg.ellipse(0, 0, 128, 128);
+      // Blazing Brass Headlamp at center shooting cross-ocean cyan lightning bolts!
+      pg.fill(138, 255, 255);
+      pg.ellipse(0, -12, 46 + Math.sin(t * 25) * 8, 46 + Math.sin(t * 25) * 8);
+      pg.noFill();
+      pg.stroke(118, 252, 255);
+      pg.strokeWeight(3.4);
+      for (let b = 0; b < 8; b++) {
+        const a = (b / 8) * Math.PI * 2 + t * 3;
+        pg.line(Math.cos(a) * 28, -12 + Math.sin(a) * 28, Math.cos(a) * 115, -12 + Math.sin(a) * 185);
+      }
+      pg.pop();
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 11 (`10 ➔ 11`, 130s): 海底电报莫尔斯光脉冲超载门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era11') {
+      // Subsea Telegraph Morse Code Light Dots/Dashes overloading into Niagara Waterfall & Tesla Million-Volt Storm!
+      pg.fill(18, 88, 168, 215);
+      pg.noStroke();
+      pg.rect(sx - 38, topY, 76, spanH);
+      for (let y = topY + 20; y < botY - 20; y += 34) {
+        const isDash = ((Math.floor(y / 34) + Math.floor(t * 12)) % 2 === 0);
+        pg.fill(138, 255, 255);
+        pg.stroke(212, 148, 255);
+        pg.strokeWeight(2.4);
+        pg.rect(sx - (isDash ? 28 : 10), y, isDash ? 56 : 20, 14, 6);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 12 (`11 ➔ 12`, 142s): 特斯拉球形闪电坍缩黑洞门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era12') {
+      // Tesla Violet Ball Lightning imploding into Einstein Gravitational-Lensing Solar Eclipse Black Hole!
+      pg.push();
+      pg.translate(sx, midY);
+      for (let r = 4; r >= 1; r--) {
+        pg.noFill();
+        pg.stroke(r % 2 === 0 ? [212, 148, 255, 220] : [255, 208, 72, 235]);
+        pg.strokeWeight(4.5);
+        pg.ellipse(0, 0, r * 42 + Math.sin(t * 14 + r) * 10, r * 72);
+      }
+      pg.fill(6, 8, 16);
+      pg.stroke(118, 248, 255);
+      pg.strokeWeight(3.5);
+      pg.ellipse(0, 0, 74, 74);
+      pg.pop();
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 13 (`12 ➔ 13`, 154s): 视界白光破晓 · 百羽和平鸽冲屏门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era13') {
+      // Event-Horizon Makoto Shinkai Dawn Ray Burst + Flock of White Olympic Peace Doves flying across the seam!
+      pg.noStroke();
+      pg.fill(255, 248, 212, 185);
+      pg.rect(sx - 44, topY, 88, spanH);
+      for (let d = 0; d < 11; d++) {
+        const dy = topY + 35 + ((d * 52 - t * 95) % (spanH - 50) + (spanH - 50)) % (spanH - 50);
+        const dx = sx + Math.sin(d * 2.1 + t * 5) * 36;
+        const flap = Math.sin(t * 18 + d) * 14;
+        pg.fill(255, 255, 255);
+        pg.stroke(28, 138, 238);
+        pg.strokeWeight(2.0);
+        pg.triangle(dx - 22, dy - flap, dx + 18, dy, dx - 6, dy + 8);
+        pg.triangle(dx + 22, dy - flap, dx - 18, dy, dx + 6, dy + 8);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 14 (`13 ➔ 14`, 166s): 复古显像管电视机啪声切台门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era14') {
+      // Retro Convex CRT TV Set snapping to a dazzling center green phosphor dot & exploding into 8-Bit Pixel Matrix!
+      pg.fill(24, 34, 28, 242);
+      pg.stroke(98, 255, 158);
+      pg.strokeWeight(3.2);
+      pg.rect(sx - 56, midY - 88, 112, 176, 16);
+      // Dazzling CRT degauss green beam & cascading 8-Bit pixel blocks
+      pg.stroke(148, 255, 198);
+      pg.strokeWeight(4.5);
+      pg.line(sx - 48, midY, sx + 48, midY);
+      pg.fill(255, 255, 255);
+      pg.noStroke();
+      pg.ellipse(sx, midY, 26 + Math.sin(t * 30) * 8, 26 + Math.sin(t * 30) * 8);
+      for (let p = 0; p < 14; p++) {
+        const py = topY + 24 + p * 42;
+        const px = sx + Math.sin(p * 1.7 + t * 8) * 32;
+        pg.fill(p % 2 === 0 ? [98, 255, 158] : [255, 218, 68]);
+        pg.rect(px - 8, py - 8, 16, 16, 2);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // PORTAL 15 (`14 ➔ 15`, 178s): 《三体》强互作用力“水滴”镜面穿屏门
+    // -------------------------------------------------------------------------
+    else if (rightId === 'era15') {
+      // Mirror-smooth silver "Three-Body" Waterdrop Probe piercing through the 8-Bit pixel wall with liquid-mirror shockwave rings!
+      pg.noFill();
+      for (let r = 1; r <= 5; r++) {
+        pg.stroke(98, 255, 232, 245 - r * 38);
+        pg.strokeWeight(3.6 - r * 0.4);
+        pg.ellipse(sx, midY, r * 34, r * 92);
+      }
+      // Silver Teardrop "Waterdrop" Probe piercing across the seam
+      pg.push();
+      pg.translate(sx, midY);
+      pg.fill(235, 248, 255);
+      pg.stroke(255, 255, 255);
+      pg.strokeWeight(2.5);
+      pg.beginShape();
+      pg.vertex(-54, 0);
+      pg.bezierVertex(-18, -26, 28, -28, 44, 0);
+      pg.bezierVertex(28, 28, -18, 26, -54, 0);
+      pg.endShape(pg.CLOSE);
+      pg.fill(255, 255, 255);
+      pg.noStroke();
+      pg.ellipse(12, -8, 32, 8);
+      pg.pop();
+    }
+
+    // Compact Floating Portal Title Pill at the Top of the Seam
+    const portalTitles = {
+      era01: '🔥 Portal 01 · 达·芬奇圆规火环门',
+      era02: '🌊 Portal 02 · 狮吼碎岩百米海啸门',
+      era03: '🐢 Portal 03 · 沸腾铜水龟甲裂兆门',
+      era04: '⚡ Portal 04 · 饕餮吞噬宙斯雷霆门',
+      era05: '🥏 Portal 05 · 破空铁饼飞天绫罗门',
+      era06: '🧱 Portal 06 · 牡丹化毕昇活字魔方门',
+      era07: '🖌️ Portal 07 · 巨毫浓墨一笔横扫门',
+      era08: '🏺 Portal 08 · 青花瓷浪破壁惊涛门',
+      era09: '🔭 Portal 09 · 黄铜单筒望远镜钻镜门',
+      era10: '🚂 Portal 10 · 火车撞镜法拉第电弧门',
+      era11: '📡 Portal 11 · 海底莫尔斯脉冲超载门',
+      era12: '🕳️ Portal 12 · 球形闪电坍缩黑洞门',
+      era13: '🕊️ Portal 13 · 视界破晓百羽和平鸽门',
+      era14: '📺 Portal 14 · 显像管电视啪声切台门',
+      era15: '💧 Portal 15 ·《三体》水滴镜面穿屏门',
     };
-
-    const pt = pillarTablets[rightId] || { badge: 'GATE', from: '前幕', toRows: ['时', '空', '之', '门'], sub: 'NEXT', bg: [32, 28, 24], fg: [255, 218, 118] };
-    const tabW = 54; // Strictly narrower than the 76px pillar (`54px < 76px`) so it NEVER protrudes!
-    const tabY = LETTERBOX_TOP + 26;
-    const tabH = 268;
-
-    // Outer recessed carved tablet frame inside the pillar
-    pg.fill(pt.bg[0], pt.bg[1], pt.bg[2], 246);
-    pg.stroke(pt.fg[0], pt.fg[1], pt.fg[2], 245);
-    pg.strokeWeight(2.2);
-    pg.rect(sx - tabW * 0.5, tabY, tabW, tabH, 8);
-    // Inner double-line filigree border
-    pg.noFill();
-    pg.stroke(pt.fg[0], pt.fg[1], pt.fg[2], 115);
-    pg.strokeWeight(1.0);
-    pg.rect(sx - tabW * 0.5 + 4, tabY + 4, tabW - 8, tabH - 8, 5);
-
-    // Tier 1: Top Circular Medallion Crest (`y = tabY + 24`)
-    pg.fill(pt.fg[0], pt.fg[1], pt.fg[2], 38);
-    pg.stroke(pt.fg[0], pt.fg[1], pt.fg[2], 235);
-    pg.strokeWeight(1.6);
-    pg.ellipse(sx, tabY + 24, 34, 34);
-    pg.noStroke();
-    pg.fill(pt.fg[0], pt.fg[1], pt.fg[2], 255);
-    pg.textFont('Georgia, serif');
-    pg.textAlign(pg.CENTER, pg.CENTER);
-    pg.textSize(9.5);
-    pg.text(pt.badge, sx, tabY + 24);
-
-    // Tier 2: Outgoing Era Label (`from`) + Golden Transition Arrow (`▼`)
-    pg.fill(220, 230, 240, 225);
-    pg.textFont('"STKaiti", "KaiTi", serif');
-    pg.textSize(11.0);
-    pg.text(pt.from, sx, tabY + 54);
-    pg.fill(255, 214, 78, 245);
-    pg.textSize(10.0);
-    pg.text('▼', sx, tabY + 72);
-
-    // Tier 3: Vertically Stacked Main Inscription (`toRows`, 4 characters stacked cleanly down the pillar center!)
-    pg.fill(pt.fg[0], pt.fg[1], pt.fg[2], 255);
-    pg.textFont('"STKaiti", "KaiTi", Georgia, serif');
-    pg.textSize(16.5);
-    pt.toRows.forEach((ch, idx) => {
-      pg.text(ch, sx, tabY + 98 + idx * 32);
-    });
-
-    // Tier 4: Bottom Native Script Stamp (`sub`)
-    pg.stroke(pt.fg[0], pt.fg[1], pt.fg[2], 140);
-    pg.strokeWeight(1.2);
-    pg.line(sx - 18, tabY + 228, sx + 18, tabY + 228);
-    pg.noStroke();
-    pg.fill(255, 238, 158, 245);
-    pg.textFont('monospace');
-    pg.textSize(10.0);
-    pg.text(pt.sub, sx, tabY + 246);
+    const pTitle = portalTitles[rightId];
+    if (pTitle) {
+      pg.textFont('serif');
+      pg.textSize(11.5);
+      const pw = pg.textWidth(pTitle) + 20;
+      pg.fill(10, 14, 24, 235);
+      pg.stroke(255, 218, 88, 240);
+      pg.strokeWeight(1.8);
+      pg.rect(sx - pw * 0.5, topY + 10, pw, 24, 12);
+      pg.noStroke();
+      pg.fill(255, 238, 128);
+      pg.textAlign(pg.CENTER, pg.CENTER);
+      pg.text(pTitle, sx, topY + 22);
+    }
 
     pg.pop();
   },

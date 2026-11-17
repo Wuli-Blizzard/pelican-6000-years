@@ -25,23 +25,37 @@ function computeRig(state, W = 1280, H = 720) {
   const crankAngle = beat * Math.PI;
   const wheelR = 54;
 
-  const rearWorldX = pelicanWorldX - 96;
-  const frontWorldX = pelicanWorldX + 100;
-  const rearGroundY = getRoadY(rearWorldX, H) + (cam ? cam.swayY : 0);
-  const frontGroundY = getRoadY(frontWorldX, H) + (cam ? cam.swayY : 0);
+  // V6.0 6-DOF Cosmic Riding Parameters ("天地为方、前后左右为合")
+  const ridePitch = (cam && cam.ridePitch) ? cam.ridePitch : 0.0;
+  const altOffset = (cam && cam.rideAltitudeOffset) ? cam.rideAltitudeOffset : 0.0;
+  const wbComp = (cam && cam.wheelbaseCompress) ? cam.wheelbaseCompress : 1.0;
+  const frontScale = (cam && cam.frontWheelScale) ? cam.frontWheelScale : 1.0;
+  const rearScale = (cam && cam.rearWheelScale) ? cam.rearWheelScale : 1.0;
+  const stretchX = (cam && cam.squashStretchX) ? cam.squashStretchX : 1.0;
+  const squashY = (cam && cam.squashStretchY) ? cam.squashStretchY : 1.0;
+
+  const rearDx = -96 * wbComp * stretchX;
+  const frontDx = 100 * wbComp * stretchX;
+  const rearWorldX = pelicanWorldX + rearDx;
+  const frontWorldX = pelicanWorldX + frontDx;
+
+  const baseRearY = getRoadY(rearWorldX, H) + (cam ? cam.swayY : 0) + altOffset - Math.sin(ridePitch) * 92;
+  const baseFrontY = getRoadY(frontWorldX, H) + (cam ? cam.swayY : 0) + altOffset + Math.sin(ridePitch) * 96;
+  const rearGroundY = baseRearY;
+  const frontGroundY = baseFrontY;
   const centerGroundY = (rearGroundY + frontGroundY) * 0.5;
-  const roadSlope = Math.atan2(frontGroundY - rearGroundY, 196);
+  const roadSlope = Math.atan2(frontGroundY - rearGroundY, Math.max(60, frontDx - rearDx));
 
   const centerX = pelicanScreenX + (cam ? cam.swayX : 0);
-  const bob = Math.sin(crankAngle * 2) * 4.0 - beatPulse * 3.2;
+  const bob = (Math.sin(crankAngle * 2) * 4.0 - beatPulse * 3.2) * squashY;
   const pitch = roadSlope + Math.cos(crankAngle * 2) * 0.032;
 
-  const rearWheel = { x: centerX - 96, y: rearGroundY - wheelR };
-  const frontWheel = { x: centerX + 100, y: frontGroundY - wheelR };
-  const bb = { x: centerX - 6, y: centerGroundY - wheelR + 3 + bob * 0.35 };
-  const seatPost = { x: centerX - 46, y: centerGroundY - 128 + bob * 0.85 };
-  const headTubeTop = { x: centerX + 60, y: frontGroundY - 140 + bob * 0.65 };
-  const handlebar = { x: centerX + 48, y: frontGroundY - 152 + bob * 0.65 };
+  const rearWheel = { x: centerX + rearDx, y: rearGroundY - wheelR, scale: rearScale };
+  const frontWheel = { x: centerX + frontDx, y: frontGroundY - wheelR, scale: frontScale };
+  const bb = { x: centerX - 6 * wbComp, y: centerGroundY - wheelR + 3 + bob * 0.35 };
+  const seatPost = { x: centerX - 46 * wbComp, y: centerGroundY - 128 * squashY + bob * 0.85 };
+  const headTubeTop = { x: centerX + 60 * wbComp, y: frontGroundY - 140 * squashY + bob * 0.65 };
+  const handlebar = { x: centerX + 48 * wbComp, y: frontGroundY - 154 * squashY + bob * 0.65 };
 
   const crankR = 24;
   const pedalNear = { x: bb.x + Math.cos(crankAngle) * crankR, y: bb.y + Math.sin(crankAngle) * crankR };
@@ -328,6 +342,10 @@ function renderMuseumRigForEra(pg, rig, state, eraObj) {
 
   drawVolumetricLeg(pg, rig.nearLeg, stroke, fillBody, shadeBody, fillBeak, 1.0);
   drawVolumetricWing(pg, rig.wingIK, stroke, fillWing, shadeBody, rimLight);
+
+  // V6.0 MANDATORY TOP-LAYER FOREGROUND HANDLEBAR MODULE (`VehicleHandlebarContract`):
+  // Rendered ON TOP of chassis, sails, torso, and wing so the handlebar at (hbX, hbY) is NEVER occluded!
+  drawHandlebarModule(pg, rig, state, theme, vehicle);
 
   // 5. DIMENSIONAL ART-MEDIUM OVERLAY ON CHARACTER (让角色身体笔触真正融入所跳入的画境！)
   if (eraObj.id === 'intro') {
@@ -1256,6 +1274,17 @@ function drawExaggeratedEraCat(pg, rig, state, eraId, theme) {
     pg.rect(hx - 9, hy - 4, 3, 2);
     pg.rect(hx + 4, hy - 4, 3, 2);
 
+    // V6.0《红楼梦》“刘姥姥逛赛博大观园”满头簪花 + 惊叹张口表情！
+    const lookTurn = Math.sin(state.t * 5.5) * 4.5;
+    pg.fill(255, 72, 128);
+    pg.stroke(255, 228, 88);
+    pg.strokeWeight(1.5);
+    pg.ellipse(hx - 10, hy - 13, 9, 9);
+    pg.ellipse(hx, hy - 15, 11, 11);
+    pg.ellipse(hx + 10, hy - 13, 9, 9);
+    pg.fill(238, 68, 88);
+    pg.ellipse(hx + lookTurn * 0.4, hy + 5, 6, 7);
+
     // Retro Beige CRT Monitor & Glowing Green Terminal Screen in front of Cat!
     const mx = 26, my = -10;
     pg.fill(228, 222, 204);
@@ -1425,6 +1454,42 @@ function drawEraPelicanCostume(pg, rig, eraId, t, theme) {
     pg.quad(hx - 18, hy - 24, sx + 15, sy - 3, sx + 9, hy + 14, hx - 20, hy + 12);
     pg.fill(238, 138, 64);
     pg.ellipse(sx + 5, sy + 6, 11, 11);
+  } else if (eraId === 'era11') {
+    // 11 TESLA × 82版《西游记》大闹天宫：锁子黄金甲披肩与百万伏特混天绫电弧飘带！
+    pg.fill(255, 208, 64, 240);
+    pg.stroke(198, 42, 32);
+    pg.strokeWeight(2.2);
+    pg.quad(hx - 18, hy - 24, sx + 16, sy - 3, sx + 10, hy + 14, hx - 20, hy + 12);
+    pg.noFill();
+    pg.stroke(238, 68, 255, 235);
+    pg.strokeWeight(3.0);
+    pg.bezier(sx - 6, sy - 6, sx - 42, sy - 34 + Math.sin(t * 10) * 10, sx - 68, sy - 10, sx - 94, sy - 26);
+  } else if (eraId === 'era12') {
+    // 12 EINSTEIN ×《哈姆雷特》：丹麦王子黑色天鹅绒剧场披风与黄金时空表链！
+    pg.fill(24, 22, 38, 245);
+    pg.stroke(255, 218, 98);
+    pg.strokeWeight(2.2);
+    pg.quad(hx - 18, hy - 24, sx + 15, sy - 3, sx + 9, hy + 14, hx - 22, hy + 14);
+  } else if (eraId === 'era13') {
+    // 13 OLYMPICS ×《喜羊羊/猪猪侠》：热血国漫冠军红金战袍与五环徽章！
+    pg.fill(238, 42, 42, 245);
+    pg.stroke(255, 228, 68);
+    pg.strokeWeight(2.2);
+    pg.quad(hx - 18, hy - 24, sx + 16, sy - 3, sx + 10, hy + 14, hx - 20, hy + 12);
+    pg.fill(255, 238, 88);
+    pg.ellipse(sx + 5, sy + 6, 12, 12);
+  } else if (eraId === 'era14') {
+    // 14 SILICON VALLEY ×《红楼梦》大观园：极客连帽衫配大观园金陵云锦滚边！
+    pg.fill(22, 118, 68, 240);
+    pg.stroke(255, 214, 88);
+    pg.strokeWeight(2.2);
+    pg.quad(hx - 18, hy - 24, sx + 15, sy - 3, sx + 9, hy + 14, hx - 20, hy + 12);
+  } else if (eraId === 'era15') {
+    // 15 GLOBALIZATION ×《三体》：星际全息流光领航服！
+    pg.fill(32, 148, 208, 235);
+    pg.stroke(138, 255, 238);
+    pg.strokeWeight(2.2);
+    pg.quad(hx - 18, hy - 24, sx + 16, sy - 3, sx + 10, hy + 14, hx - 20, hy + 12);
   }
   pg.pop();
 }
@@ -1521,6 +1586,50 @@ function drawEraHeadgear(pg, head, eraId, t, theme) {
     pg.line(-1, -18, -1, -32);
     pg.fill(118, 252, 255);
     pg.ellipse(-1, -34, 8, 8);
+  } else if (eraId === 'era11') {
+    // 11 TESLA × 82版《西游记》：齐天大圣凤翅紫金冠双雉鸡翎 × 特斯拉高压电弧！
+    pg.fill(255, 212, 58);
+    pg.stroke(198, 42, 32);
+    pg.strokeWeight(2.0);
+    pg.arc(-1, -10, 24, 16, Math.PI, Math.PI * 2);
+    pg.noFill();
+    pg.stroke(238, 52, 42);
+    pg.strokeWeight(2.6);
+    pg.bezier(-4, -18, -28, -38, -54, -34 + Math.sin(t * 9) * 6, -72, -22);
+    pg.stroke(198, 142, 255);
+    pg.bezier(-2, -18, -24, -44, -48, -42 + Math.cos(t * 9) * 6, -66, -30);
+  } else if (eraId === 'era12') {
+    // 12 EINSTEIN ×《哈姆雷特》：丹麦剧场羽毛礼帽与引力透镜光环！
+    pg.fill(28, 24, 44);
+    pg.stroke(255, 224, 98);
+    pg.strokeWeight(1.8);
+    pg.ellipse(-2, -11, 28, 8);
+    pg.arc(-2, -11, 20, 16, Math.PI, Math.PI * 2);
+    pg.stroke(118, 248, 255);
+    pg.strokeWeight(2.2);
+    pg.line(-6, -16, -24, -28);
+  } else if (eraId === 'era13') {
+    // 13 OLYMPICS ×《喜羊羊/猪猪侠》：热血国漫破风护目镜与黄金头带！
+    pg.fill(255, 68, 42);
+    pg.stroke(255, 238, 78);
+    pg.strokeWeight(2.0);
+    pg.rect(-12, -16, 22, 6, 3);
+    pg.line(-12, -13, -36, -18 + Math.sin(t * 15) * 5);
+    pg.line(-12, -13, -34, -8 + Math.cos(t * 15) * 5);
+  } else if (eraId === 'era14') {
+    // 14 SILICON VALLEY ×《红楼梦》：极客VR头显配大观园桃花簪！
+    pg.fill(18, 38, 28);
+    pg.stroke(98, 255, 158);
+    pg.strokeWeight(1.8);
+    pg.rect(-8, -15, 20, 7, 2);
+    pg.fill(255, 118, 168);
+    pg.ellipse(-8, -17, 9, 9);
+  } else if (eraId === 'era15') {
+    // 15 GLOBALIZATION ×《三体》：五洲全息领航光环冠！
+    pg.noFill();
+    pg.stroke(118, 255, 232);
+    pg.strokeWeight(2.4);
+    pg.ellipse(0, -17, 28, 9);
   }
   pg.pop();
 }
@@ -1533,8 +1642,10 @@ function drawRadicallyTransformedVehicle(pg, rig, state, theme, v) {
   const frontR = (v === 'penny_farthing') ? r * 1.36 : (v === 'song_wheelbarrow' ? r * 1.18 : r);
   const rearCenter = (v === 'penny_farthing' || v === 'song_wheelbarrow') ? { x: rig.rearWheel.x, y: rig.rearWheel.y + (r - rearR) } : rig.rearWheel;
   const frontCenter = (v === 'penny_farthing' || v === 'song_wheelbarrow') ? { x: rig.frontWheel.x, y: rig.frontWheel.y - (frontR - r) } : rig.frontWheel;
-  drawVolumetricWheel(pg, rearCenter, rearR, rig.crankAngle, v, theme, false, state.t);
-  drawVolumetricWheel(pg, frontCenter, frontR, rig.crankAngle, v, theme, true, state.t);
+  const rScale = rig.rearWheel.scale || 1.0;
+  const fScale = rig.frontWheel.scale || 1.0;
+  drawVolumetricWheel(pg, rearCenter, rearR * rScale, rig.crankAngle, v, theme, false, state.t);
+  drawVolumetricWheel(pg, frontCenter, frontR * fScale, rig.crankAngle, v, theme, true, state.t);
 
   BrushKit.draw3DTube(pg, rig.bb.x, rig.bb.y, rig.pedalFar.x, rig.pedalFar.y, frameBase, frameHi, stroke, 2.5);
 
@@ -2110,6 +2221,229 @@ function drawVolumetricWing(pg, wingIK, strokeCol, wingCol, shadeCol, rimLight) 
   pg.stroke(rimLight[0], rimLight[1], rimLight[2], 195);
   pg.strokeWeight(1.5);
   pg.bezier(sx - 5, sy - 3, ex - 3, ey - 9, ex + 8, ey - 5, hx - 2, hy);
+  pg.pop();
+}
+
+/**
+ * ============================================================================
+ * V6.0 SLOT 4: MANDATORY FOREGROUND HANDLEBAR MODULE (`VehicleHandlebarContract`)
+ * ============================================================================
+ * Ensures 100% of eras (especially 06, 07, 08, 09, 10, 11, 12, 13, 14, 15) have a
+ * bold, unmistakable, era-authentic Handlebar Assembly rendered on the VERY TOP
+ * FOREGROUND LAYER at `(rig.handlebar.x, rig.handlebar.y)` with Pelican Wing-Clasp IK Lock!
+ */
+function drawHandlebarModule(pg, rig, state, theme, v) {
+  const { stroke, frameBase, frameHi } = theme;
+  const hx = rig.handlebar.x;
+  const hy = rig.handlebar.y;
+  const stX = rig.headTubeTop.x;
+  const stY = rig.headTubeTop.y;
+  const t = state.t;
+
+  pg.push();
+
+  // 1) Reinforced Stem riser connecting headTubeTop -> handlebar anchor
+  BrushKit.draw3DTube(pg, stX, stY, hx, hy, frameBase, frameHi, stroke, 3.8);
+
+  // 2) Era-Specific Foreground Handlebar Crossbar, Grips, Brake Levers, Tassels & Instruments!
+  if (v === 'song_wheelbarrow') {
+    // 06 NORTHERN SONG: Dual Curved Bamboo-Wood Jigongche Crossbar + Crimson Silk Tassel + Brass Bell ("北宋双曲辕竹木鸡公车车把 + 红绸流苏 + 黄铜响铃")
+    pg.noFill();
+    pg.stroke(98, 62, 26);
+    pg.strokeWeight(7.0);
+    pg.bezier(hx - 26, hy + 8, hx - 8, hy - 14, hx + 14, hy - 14, hx + 28, hy + 4);
+    pg.stroke(218, 176, 104);
+    pg.strokeWeight(3.2);
+    pg.bezier(hx - 26, hy + 8, hx - 8, hy - 14, hx + 14, hy - 14, hx + 28, hy + 4);
+    // Bamboo node rings & woven rattan grips
+    pg.fill(78, 128, 68);
+    pg.stroke(36, 48, 28);
+    pg.strokeWeight(1.8);
+    pg.ellipse(hx - 24, hy + 7, 13, 9);
+    pg.ellipse(hx + 26, hy + 3, 13, 9);
+    // Brass Bicycle Bell ("北宋黄铜响铃")
+    pg.fill(255, 214, 68);
+    pg.stroke(88, 52, 16);
+    pg.strokeWeight(1.8);
+    pg.arc(hx + 10, hy - 12, 16, 14, Math.PI, Math.PI * 2);
+    // Flowing Crimson Silk Tassel ("迎风飘拂红绸流苏")
+    const sw = Math.sin(t * 9.0) * 7;
+    pg.stroke(228, 38, 32);
+    pg.strokeWeight(3.0);
+    pg.noFill();
+    pg.bezier(hx + 26, hy + 5, hx + 22 + sw * 0.5, hy + 18, hx + 16 + sw, hy + 28, hx + 12 + sw * 1.3, hy + 38);
+    pg.fill(255, 212, 68);
+    pg.ellipse(hx + 26, hy + 5, 7, 7);
+  }
+  else if (v === 'ming_carriage') {
+    // 07 YUAN-MING-QING: Jingdezhen Blue-and-White Porcelain Scroll Handlebar + Wolf-Hair Brush Ferrule ("景德镇青花瓷轴横把 + 狼毫湘妃竹笔管把套")
+    BrushKit.draw3DTube(pg, hx - 26, hy + 4, hx + 26, hy - 4, [245, 250, 255], [255, 255, 255], [22, 64, 158], 5.2);
+    pg.fill(28, 82, 186);
+    pg.noStroke();
+    pg.ellipse(hx - 10, hy + 1, 7, 7);
+    pg.ellipse(hx + 10, hy - 1, 7, 7);
+    pg.fill(24, 32, 48);
+    pg.stroke(245, 250, 255);
+    pg.strokeWeight(1.5);
+    pg.triangle(hx - 26, hy + 4, hx - 38, hy + 10, hx - 34, hy - 2);
+  }
+  else if (v === 'davinci_gear') {
+    // 08 INCA & NAVIGATION: Foreground Mahogany & Brass Ship's Helm T-Bar ("圣玛利亚号前甲板最前景层红木黄铜船舵式 T 型横把，100% 不被船帆遮挡！")
+    BrushKit.draw3DTube(pg, stX, stY, hx + 6, hy - 6, [128, 68, 28], [255, 216, 78], [42, 22, 10], 5.0);
+    BrushKit.draw3DTube(pg, hx - 26, hy - 2, hx + 30, hy - 8, [142, 74, 30], [255, 222, 88], [42, 22, 10], 5.5);
+    pg.push();
+    pg.translate(hx + 4, hy - 6);
+    pg.rotate(t * 2.2);
+    pg.noFill();
+    pg.stroke(255, 218, 68);
+    pg.strokeWeight(2.8);
+    pg.ellipse(0, 0, 26, 26);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      pg.line(0, 0, Math.cos(a) * 16, Math.sin(a) * 16);
+    }
+    pg.pop();
+    pg.fill(255, 218, 78);
+    pg.stroke(68, 36, 12);
+    pg.strokeWeight(1.8);
+    pg.ellipse(hx - 26, hy - 2, 12, 9);
+    pg.ellipse(hx + 30, hy - 8, 12, 9);
+  }
+  else if (v === 'penny_farthing') {
+    // 09 VAN GOGH & INDUSTRIAL: Victorian Brass Cowhorn High-Wheeler Bar + Chrome-Yellow Paint Tube Grips
+    pg.noFill();
+    pg.stroke(245, 198, 68);
+    pg.strokeWeight(5.8);
+    pg.bezier(hx - 26, hy + 8, hx - 8, hy - 14, hx + 12, hy - 14, hx + 28, hy + 4);
+    pg.fill(28, 82, 198);
+    pg.stroke(255, 224, 68);
+    pg.strokeWeight(2.0);
+    pg.ellipse(hx - 26, hy + 8, 13, 9);
+    pg.ellipse(hx + 28, hy + 4, 13, 9);
+  }
+  else if (v === 'safety_dynamo') {
+    // 10 FARADAY ELECTROMAGNETIC: Ebonite Dual Drop Bar Wrapped in Glowing Copper Coils + Jacob's Ladder Horn Spark Gap ("缠绕发光紫铜线圈的黑胶木绝缘双弯把 + 羊角电弧放电球")
+    pg.noFill();
+    pg.stroke(28, 34, 44);
+    pg.strokeWeight(6.5);
+    pg.bezier(hx - 22, hy - 4, hx + 14, hy - 12, hx + 28, hy + 8, hx + 14, hy + 20);
+    pg.stroke(245, 148, 64);
+    pg.strokeWeight(2.6);
+    for (let k = -16; k <= 12; k += 7) {
+      pg.line(hx + k, hy - 10, hx + k + 3, hy - 2);
+    }
+    const b1x = hx + 8, b1y = hy - 22;
+    const b2x = hx + 26, b2y = hy - 18;
+    pg.stroke(238, 158, 72);
+    pg.strokeWeight(2.4);
+    pg.line(hx + 4, hy - 8, b1x, b1y);
+    pg.line(hx + 16, hy - 6, b2x, b2y);
+    pg.fill(118, 255, 255);
+    pg.noStroke();
+    pg.ellipse(b1x, b1y, 9, 9);
+    pg.ellipse(b2x, b2y, 9, 9);
+    pg.stroke(138, 255, 255);
+    pg.strokeWeight(2.2);
+    pg.line(b1x, b1y, (b1x + b2x) * 0.5, (b1y + b2y) * 0.5 - 6 + Math.sin(t * 40) * 4);
+    pg.line((b1x + b2x) * 0.5, (b1y + b2y) * 0.5 - 6 + Math.sin(t * 40) * 4, b2x, b2y);
+  }
+  else if (v === 'tesla_lightning') {
+    // 11 TESLA AC: High-Voltage Ribbed White Porcelain Insulator Bar + Leyden Jar Handguards ("高压白瓷绝缘子横把 + 莱顿瓶护手")
+    BrushKit.draw3DTube(pg, hx - 26, hy + 4, hx + 26, hy - 4, [242, 246, 255], [255, 255, 255], [88, 42, 168], 6.0);
+    pg.fill(248, 250, 255);
+    pg.stroke(138, 78, 235);
+    pg.strokeWeight(1.8);
+    for (let k = -18; k <= 18; k += 9) {
+      pg.ellipse(hx + k, hy - k * 0.15, 8, 14);
+    }
+    pg.fill(198, 138, 255, 235);
+    pg.stroke(255, 245, 255);
+    pg.rect(hx + 22, hy - 12, 12, 16, 3);
+  }
+  else if (v === 'relativity_photon') {
+    // 12 EINSTEIN RELATIVITY: Doppler Redshift / Blueshift Photonic Drop Bar ("多普勒红移/蓝移光子弯把")
+    pg.noFill();
+    pg.stroke(255, 108, 58);
+    pg.strokeWeight(6.0);
+    pg.arc(hx + 6, hy + 4, 42, 26, Math.PI * 0.75, Math.PI * 1.55);
+    pg.stroke(88, 238, 255);
+    pg.strokeWeight(6.0);
+    pg.arc(hx + 6, hy + 4, 42, 26, -Math.PI * 0.45, Math.PI * 0.45);
+    pg.fill(255, 238, 128);
+    pg.noStroke();
+    pg.ellipse(hx + 26, hy + 4, 10, 10);
+  }
+  else if (v === 'carbon_olympic') {
+    // 13 MODERN OLYMPICS: 5-Ring Painted Full-Carbon Aero Triathlon Bars ("奥运五环涂装全碳纤维空气动力学休息把 Aero Bars")
+    pg.noFill();
+    pg.stroke(28, 36, 48);
+    pg.strokeWeight(6.5);
+    pg.line(hx - 18, hy + 4, hx + 34, hy - 8);
+    pg.arc(hx + 16, hy + 6, 34, 24, -Math.PI * 0.4, Math.PI * 0.55);
+    const aeroCols = [[0, 133, 199], [244, 195, 0], [255, 255, 255], [0, 159, 61], [223, 0, 36]];
+    aeroCols.forEach((ac, idx) => {
+      pg.fill(...ac);
+      pg.noStroke();
+      pg.ellipse(hx - 8 + idx * 9, hy + 2 - idx * 2, 7, 7);
+    });
+  }
+  else if (v === 'pixel_bmx') {
+    // 14 SILICON VALLEY: Retro BMX Dual-Crossbar with Rainbow Ribbon Cable & Mechanical Keycap Grips ("复古BMX双横梁燕把 + 彩虹排线 + 机械键盘按键把套")
+    pg.noFill();
+    pg.stroke(38, 238, 128);
+    pg.strokeWeight(5.2);
+    pg.line(hx - 16, hy + 8, hx - 8, hy - 18);
+    pg.line(hx - 8, hy - 18, hx + 22, hy - 18);
+    pg.line(hx + 22, hy - 18, hx + 16, hy + 8);
+    pg.strokeWeight(3.2);
+    pg.line(hx - 12, hy - 6, hx + 18, hy - 6);
+    const rbCols = [[255, 72, 72], [255, 212, 58], [72, 238, 128], [72, 178, 255]];
+    rbCols.forEach((rc, i) => {
+      pg.stroke(...rc);
+      pg.strokeWeight(2.2);
+      pg.line(hx - 4 + i * 5, hy - 20, hx - 2 + i * 5, hy - 4);
+    });
+    pg.fill(242, 240, 232);
+    pg.stroke(24, 34, 28);
+    pg.strokeWeight(1.8);
+    pg.rect(hx - 24, hy - 22, 14, 12, 2);
+    pg.fill(238, 68, 58);
+    pg.rect(hx + 16, hy - 22, 16, 12, 2);
+  }
+  else if (v === 'aero_globe') {
+    // 15 GLOBALIZATION: Carbon-Titanium Butterfly Trekking Bar + Center Holographic 5-Continent Nav & Hydraulic Brake Levers ("碳纤钛合金蝴蝶旅行把 + 中置全息五洲导航仪 + 液压刹把")
+    pg.noFill();
+    pg.stroke(218, 238, 252);
+    pg.strokeWeight(5.0);
+    pg.ellipse(hx - 10, hy - 2, 26, 16);
+    pg.ellipse(hx + 14, hy - 2, 26, 16);
+    pg.stroke(98, 255, 232);
+    pg.strokeWeight(2.8);
+    pg.line(hx + 24, hy - 4, hx + 36, hy + 4);
+    pg.fill(18, 88, 138, 220);
+    pg.stroke(118, 255, 232);
+    pg.strokeWeight(1.8);
+    pg.ellipse(hx + 2, hy - 12, 18, 18);
+    pg.noStroke();
+    pg.fill(255, 238, 118);
+    pg.ellipse(hx + 2 + Math.cos(t * 4) * 4, hy - 12, 5, 5);
+  }
+  else {
+    // Acts 00-05: Classic Era-Styled Crossbar & Grips
+    BrushKit.draw3DTube(pg, hx - 20, hy + 4, hx + 22, hy - 4, frameBase, frameHi, stroke, 4.6);
+    pg.fill(frameHi[0], frameHi[1], frameHi[2]);
+    pg.stroke(...stroke);
+    pg.strokeWeight(1.8);
+    pg.ellipse(hx - 20, hy + 4, 11, 8);
+    pg.ellipse(hx + 22, hy - 4, 11, 8);
+  }
+
+  // 3) Pelican Wing-Hand Clasp locked directly onto (hx, hy) so the grip is 100% physically grounded!
+  pg.fill(theme.fillWing[0], theme.fillWing[1], theme.fillWing[2]);
+  pg.stroke(...stroke);
+  pg.strokeWeight(2.0);
+  pg.ellipse(hx, hy, 13, 10);
+
   pg.pop();
 }
 
